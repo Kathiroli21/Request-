@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Request Management System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --accent-color: #4895ef;
+            --success-color: #4cc9f0;
+            --danger-color: #f72585;
+            --light-color: #f8f9fa;
+            --dark-color: #212529;
+            --gray-color: #6c757d;
+            --border-radius: 8px;
+            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f5f7fa;
+            color: var(--dark-color);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .header h1 {
+            color: var(--primary-color);
+            font-weight: 700;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-2px);
+            box-shadow: var(--box-shadow);
+        }
+
+        .btn-secondary {
+            background-color: var(--gray-color);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+            transform: translateY(-2px);
+            box-shadow: var(--box-shadow);
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #e3176a;
+            transform: translateY(-2px);
+            box-shadow: var(--box-shadow);
+        }
+
+        .btn i {
+            margin-right: 0.5rem;
+        }
+
+        .card {
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--dark-color);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ced4da;
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-control:focus {
+            border-color: var(--accent-color);
+            outline: none;
+            box-shadow: 0 0 0 0.2rem rgba(72, 149, 239, 0.25);
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .table th {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 1rem;
+            text-align: left;
+        }
+
+        .table td {
+            padding: 1rem;
+            border-bottom: 1px solid #e0e0e0;
+            vertical-align: middle;
+        }
+
+        .table tr:hover {
+            background-color: rgba(67, 97, 238, 0.05);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.35rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .status-open {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .status-closed {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .edit-row-form {
+            display: none;
+            background-color: #f8f9fa;
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            margin-top: 0.5rem;
+        }
+
+        .edit-row-form.active {
+            display: block;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: white;
+            border-radius: var(--border-radius);
+            width: 100%;
+            max-width: 500px;
+            padding: 2rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--gray-color);
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .mb-3 {
+            margin-bottom: 1rem;
+        }
+
+        .mt-3 {
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-tasks"></i> Request Management System</h1>
+            <div>
+                <button id="newRequestBtn" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> New Request
+                </button>
+                <button id="adminLoginBtn" class="btn btn-secondary">
+                    <i class="fas fa-lock"></i> Admin Login
+                </button>
+            </div>
+        </div>
+
+        <!-- New Request Modal -->
+        <div id="newRequestModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">Create New Request</h2>
+                    <button class="close-btn" id="closeNewRequestModal">&times;</button>
+                </div>
+                <form id="requestForm">
+                    <div class="form-group">
+                        <label for="raiserName">Your Name</label>
+                        <input type="text" id="raiserName" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="requestType">Request Type</label>
+                        <select id="requestType" class="form-control" required>
+                            <option value="">Select a request type</option>
+                            <option value="IT Support">IT Support</option>
+                            <option value="HR Query">HR Query</option>
+                            <option value="Facilities">Facilities</option>
+                            <option value="Finance">Finance</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea id="description" class="form-control" rows="4" required></textarea>
+                    </div>
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i> Submit Request
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Admin Login Modal -->
+        <div id="adminLoginModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">Admin Login</h2>
+                    <button class="close-btn" id="closeAdminLoginModal">&times;</button>
+                </div>
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" class="form-control" required>
+                </div>
+                <div class="text-center">
+                    <button onclick="login()" class="btn btn-primary">
+                        <i class="fas fa-sign-in-alt"></i> Login
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Requests Table -->
+        <div class="card">
+            <h2 class="card-title"><i class="fas fa-list"></i> All Requests</h2>
+            <div class="table-responsive">
+                <table class="table" id="requestsTable">
+                    <thead>
+                        <tr>
+                            <th>SNo</th>
+                            <th>Request Type</th>
+                            <th>Description</th>
+                            <th>Raiser</th>
+                            <th>Updates</th>
+                            <th>Status</th>
+                            <th>Created At</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Requests will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isAdmin = false;
+        let currentEditingRow = null;
+
+        // DOM Elements
+        const newRequestBtn = document.getElementById('newRequestBtn');
+        const adminLoginBtn = document.getElementById('adminLoginBtn');
+        const newRequestModal = document.getElementById('newRequestModal');
+        const adminLoginModal = document.getElementById('adminLoginModal');
+        const closeNewRequestModal = document.getElementById('closeNewRequestModal');
+        const closeAdminLoginModal = document.getElementById('closeAdminLoginModal');
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', fetchRequests);
+        document.getElementById('requestForm').addEventListener('submit', submitRequest);
+        newRequestBtn.addEventListener('click', () => newRequestModal.classList.add('active'));
+        adminLoginBtn.addEventListener('click', () => adminLoginModal.classList.add('active'));
+        closeNewRequestModal.addEventListener('click', () => newRequestModal.classList.remove('active'));
+        closeAdminLoginModal.addEventListener('click', () => adminLoginModal.classList.remove('active'));
+
+        // Close modals when clicking outside
+        window.addEventListener('click', (e) => {
+            if (e.target === newRequestModal) newRequestModal.classList.remove('active');
+            if (e.target === adminLoginModal) adminLoginModal.classList.remove('active');
+        });
+
+        // Login function
+        function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            fetch('http://localhost:5000/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: username,
+                    password: password
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    isAdmin = true;
+                    adminLoginModal.classList.remove('active');
+                    adminLoginBtn.innerHTML = '<i class="fas fa-user-shield"></i> Admin Mode';
+                    adminLoginBtn.classList.remove('btn-secondary');
+                    adminLoginBtn.classList.add('btn-danger');
+                    alert('Login successful! You now have admin privileges.');
+                    fetchRequests();
+                } else {
+                    alert('Login failed. Please check your credentials.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred during login.');
+            });
+        }
+
+        // Fetch all requests
+        function fetchRequests() {
+            fetch('http://localhost:5000/api/requests')
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.querySelector('#requestsTable tbody');
+                    tableBody.innerHTML = '';
+                    
+                    data.forEach(request => {
+                        const row = document.createElement('tr');
+                        row.dataset.sno = request.sno;
+                        
+                        row.innerHTML = `
+                            <td>${request.sno}</td>
+                            <td>${request.request_type}</td>
+                            <td>${request.description}</td>
+                            <td>${request.raiser_name}</td>
+                            <td>${request.updates}</td>
+                            <td><span class="status-badge status-${request.status.toLowerCase()}">${request.status}</span></td>
+                            <td>${request.created_at}</td>
+                            <td class="action-buttons">
+                                ${isAdmin ? `<button onclick="showEditForm(${request.sno})" class="btn btn-secondary btn-sm">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>` : ''}
+                            </td>
+                        `;
+                        
+                        // Add edit form (hidden by default)
+                        const editForm = document.createElement('div');
+                        editForm.className = 'edit-row-form';
+                        editForm.id = `edit-form-${request.sno}`;
+                        editForm.innerHTML = `
+                            <div class="form-group">
+                                <label>Updates</label>
+                                <textarea id="update-text-${request.sno}" class="form-control" rows="2">${request.updates}</textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Status</label>
+                                <select id="status-select-${request.sno}" class="form-control">
+                                    <option value="Open" ${request.status === 'Open' ? 'selected' : ''}>Open</option>
+                                    <option value="Closed" ${request.status === 'Closed' ? 'selected' : ''}>Closed</option>
+                                </select>
+                            </div>
+                            <div class="action-buttons">
+                                <button onclick="saveEdit(${request.sno})" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-save"></i> Save
+                                </button>
+                                <button onclick="cancelEdit(${request.sno})" class="btn btn-secondary btn-sm">
+                                    <i class="fas fa-times"></i> Cancel
+                                </button>
+                            </div>
+                        `;
+                        
+                        row.appendChild(editForm);
+                        tableBody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+        // Show edit form for a row
+        function showEditForm(sno) {
+            if (currentEditingRow) {
+                document.getElementById(`edit-form-${currentEditingRow}`).classList.remove('active');
+            }
+            document.getElementById(`edit-form-${sno}`).classList.add('active');
+            currentEditingRow = sno;
+        }
+
+        // Cancel editing
+        function cancelEdit(sno) {
+            document.getElementById(`edit-form-${sno}`).classList.remove('active');
+            currentEditingRow = null;
+        }
+
+        // Save edited row
+        function saveEdit(sno) {
+            const updateText = document.getElementById(`update-text-${sno}`).value;
+            const status = document.getElementById(`status-select-${sno}`).value;
+            
+            fetch(`http://localhost:5000/api/requests/${sno}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer dummy-token'
+                },
+                body: JSON.stringify({
+                    updates: updateText,
+                    status: status
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw err; });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    cancelEdit(sno);
+                    fetchRequests();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert(error.error || 'An error occurred while updating the request.');
+            });
+        }
+
+        // Submit new request
+       function submitRequest(e) {
+        e.preventDefault();
+        const requestType = document.getElementById('requestType').value;
+        const description = document.getElementById('description').value;
+        const raiserName = document.getElementById('raiserName').value;
+        
+        // Validate inputs
+        if (!raiserName || raiserName.trim() === '') {
+            alert('Please enter your name');
+            return;
+        }
+        if (!requestType) {
+            alert('Please select a request type');
+            return;
+        }
+        if (!description || description.trim() === '') {
+            alert('Please enter a description');
+            return;
+        }
+
+        fetch('http://localhost:5000/api/requests', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                request_type: requestType,
+                description: description,
+                raiser_name: raiserName
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => { throw err; });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                alert(`Request submitted successfully! SNo: ${data.sno}`);
+                document.getElementById('requestForm').reset();
+                newRequestModal.classList.remove('active');
+                fetchRequests();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert(error.error || 'An error occurred while submitting the request.');
+        });
+    }
+    </script>
+</body>
+</html>

@@ -1,41 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Request Management System</title>
+    <title>RequestFlow Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         :root {
-            --primary-color: #4361ee;
-            --secondary-color: #3f37c9;
-            --accent-color: #4895ef;
-            --success-color: #4cc9f0;
-            --danger-color: #f72585;
-            --light-color: #f8f9fa;
-            --dark-color: #212529;
-            --gray-color: #6c757d;
-            --border-radius: 8px;
-            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --primary: #d32f2f;
+            --primary-dark: #b71c1c;
+            --primary-light: #ff6659;
+            --secondary: #f5f5f5;
+            --success: #4caf50;
+            --danger: #f44336;
+            --warning: #ff9800;
+            --light: #ffffff;
+            --dark: #212121;
+            --gray: #757575;
+            --radius: 8px;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            font-family: 'Roboto', sans-serif;
         }
 
         body {
-            font-family: 'Roboto', sans-serif;
-            background-color: #f5f7fa;
-            color: var(--dark-color);
+            background-color: var(--light);
+            color: var(--dark);
             line-height: 1.6;
         }
 
         .container {
-            max-width: 1200px;
-            margin: 2rem auto;
+            max-width: 1400px;
+            margin: 0 auto;
             padding: 0 1rem;
         }
 
@@ -43,14 +47,27 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 2rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid #e0e0e0;
+            padding: 1rem;
+            background-color: var(--primary);
+            color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
         .header h1 {
-            color: var(--primary-color);
             font-weight: 700;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
         }
 
         .btn {
@@ -59,120 +76,133 @@
             justify-content: center;
             padding: 0.75rem 1.5rem;
             border: none;
-            border-radius: var(--border-radius);
+            border-radius: var(--radius);
             font-size: 1rem;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: var(--transition);
             text-decoration: none;
         }
 
         .btn-primary {
-            background-color: var(--primary-color);
+            background-color: var(--primary);
             color: white;
         }
 
         .btn-primary:hover {
-            background-color: var(--secondary-color);
+            background-color: var(--primary-dark);
             transform: translateY(-2px);
-            box-shadow: var(--box-shadow);
+            box-shadow: var(--shadow);
         }
 
         .btn-secondary {
-            background-color: var(--gray-color);
-            color: white;
+            background-color: var(--secondary);
+            color: var(--dark);
+            border: 1px solid #e0e0e0;
         }
 
-        .btn-secondary:hover {
-            background-color: #5a6268;
-            transform: translateY(-2px);
-            box-shadow: var(--box-shadow);
+        .btn-success {
+            background-color: var(--success);
+            color: white;
         }
 
         .btn-danger {
-            background-color: var(--danger-color);
+            background-color: var(--danger);
             color: white;
         }
 
-        .btn-danger:hover {
-            background-color: #e3176a;
-            transform: translateY(-2px);
-            box-shadow: var(--box-shadow);
+        .btn-warning {
+            background-color: var(--warning);
+            color: white;
         }
 
-        .btn i {
-            margin-right: 0.5rem;
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
         }
 
         .card {
             background-color: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
             padding: 1.5rem;
-            margin-bottom: 2rem;
+            margin: 2rem 0;
+            border: 1px solid #f0f0f0;
         }
 
         .card-title {
             font-size: 1.25rem;
-            margin-bottom: 1rem;
-            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+            color: var(--primary);
             font-weight: 500;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #f0f0f0;
         }
 
         .form-group {
-            margin-bottom: 1.25rem;
+            margin-bottom: 1.5rem;
         }
 
         .form-group label {
             display: block;
             margin-bottom: 0.5rem;
             font-weight: 500;
-            color: var(--dark-color);
+            color: var(--dark);
         }
 
         .form-control {
             width: 100%;
             padding: 0.75rem;
-            border: 1px solid #ced4da;
-            border-radius: var(--border-radius);
+            border: 1px solid #e0e0e0;
+            border-radius: var(--radius);
             font-size: 1rem;
-            transition: border-color 0.3s;
+            transition: var(--transition);
         }
 
         .form-control:focus {
-            border-color: var(--accent-color);
+            border-color: var(--primary);
             outline: none;
-            box-shadow: 0 0 0 0.2rem rgba(72, 149, 239, 0.25);
+            box-shadow: 0 0 0 0.2rem rgba(211, 47, 47, 0.25);
         }
 
         .table-responsive {
             overflow-x: auto;
+            margin-top: 1rem;
+            border-radius: var(--radius);
+            border: 1px solid #f0f0f0;
         }
 
         .table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 1rem;
         }
 
         .table th {
-            background-color: var(--primary-color);
+            background-color: var(--primary);
             color: white;
             padding: 1rem;
             text-align: left;
+            font-weight: 500;
         }
 
         .table td {
             padding: 1rem;
-            border-bottom: 1px solid #e0e0e0;
-            vertical-align: middle;
+            border-bottom: 1px solid #f0f0f0;
+            vertical-align: top;
+        }
+
+        .table tr:nth-child(even) {
+            background-color: var(--secondary);
         }
 
         .table tr:hover {
-            background-color: rgba(67, 97, 238, 0.05);
+            background-color: rgba(211, 47, 47, 0.05);
         }
 
-        .status-badge {
+        .badge {
             display: inline-block;
             padding: 0.35rem 0.75rem;
             border-radius: 50px;
@@ -180,31 +210,42 @@
             font-weight: 500;
         }
 
-        .status-open {
+        .badge-open {
             background-color: #fff3cd;
             color: #856404;
         }
 
-        .status-closed {
+        .badge-closed {
             background-color: #d4edda;
             color: #155724;
         }
 
-        .action-buttons {
+        .badge-pending {
+            background-color: #cce5ff;
+            color: #004085;
+        }
+
+        .filters {
             display: flex;
-            gap: 0.5rem;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
         }
 
-        .edit-row-form {
-            display: none;
-            background-color: #f8f9fa;
-            padding: 1rem;
-            border-radius: var(--border-radius);
-            margin-top: 0.5rem;
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            cursor: pointer;
+            border: 1px solid #e0e0e0;
+            background: white;
+            transition: var(--transition);
+            font-size: 0.875rem;
         }
 
-        .edit-row-form.active {
-            display: block;
+        .filter-btn.active {
+            background-color: var(--primary);
+            color: white;
+            border-color: var(--primary);
         }
 
         .modal {
@@ -226,11 +267,26 @@
 
         .modal-content {
             background-color: white;
-            border-radius: var(--border-radius);
+            border-radius: var(--radius);
             width: 100%;
-            max-width: 500px;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
             padding: 2rem;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            animation: modalFadeIn 0.3s;
+        }
+
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .modal-header {
@@ -238,11 +294,14 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #f0f0f0;
         }
 
         .modal-title {
             font-size: 1.5rem;
-            color: var(--primary-color);
+            color: var(--primary);
+            font-weight: 500;
         }
 
         .close-btn {
@@ -250,64 +309,176 @@
             border: none;
             font-size: 1.5rem;
             cursor: pointer;
-            color: var(--gray-color);
+            color: var(--gray);
+            transition: var(--transition);
         }
 
-        .text-center {
+        .close-btn:hover {
+            color: var(--primary);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .updates-content {
+            white-space: pre-line;
+            padding: 1rem;
+            background-color: var(--secondary);
+            border-radius: var(--radius);
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .admin-only {
+            display: none;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: var(--danger);
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .notification-btn {
+            position: relative;
+        }
+
+        .user-badge {
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            background-color: var(--primary-dark);
+            color: white;
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: var(--primary);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            animation: toastSlideIn 0.3s;
+        }
+
+        @keyframes toastSlideIn {
+            from {
+                transform: translateX(100%);
+            }
+
+            to {
+                transform: translateX(0);
+            }
+        }
+
+        .toast-success {
+            background-color: var(--success);
+        }
+
+        .toast-error {
+            background-color: var(--danger);
+        }
+
+        .toast-warning {
+            background-color: var(--warning);
+        }
+
+        .empty-state {
             text-align: center;
+            padding: 2rem;
+            color: var(--gray);
         }
 
-        .mb-3 {
+        .empty-state i {
+            font-size: 3rem;
             margin-bottom: 1rem;
+            color: #e0e0e0;
         }
 
-        .mt-3 {
-            margin-top: 1rem;
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, .3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1><i class="fas fa-tasks"></i> Request Management System</h1>
-            <div>
-                <button id="newRequestBtn" class="btn btn-primary">
-                    <i class="fas fa-plus"></i> New Request
-                </button>
-                <button id="adminLoginBtn" class="btn btn-secondary">
-                    <i class="fas fa-lock"></i> Admin Login
-                </button>
-            </div>
-        </div>
 
+<body>
+    <div class="header">
+        <h1><i class="fas fa-fire-extinguisher"></i> RequestFlow Pro</h1>
+        <div class="header-actions">
+            <button id="notificationsBtn" class="btn btn-secondary notification-btn">
+                <i class="fas fa-bell"></i>
+                <span id="notificationCount" class="notification-badge" style="display: none;">0</span>
+            </button>
+            <button id="newRequestBtn" class="btn btn-primary">
+                <i class="fas fa-plus"></i> New Request
+            </button>
+            <button id="adminLoginBtn" class="btn btn-secondary">
+                <i class="fas fa-lock"></i> Login
+            </button>
+            <button id="adminLogoutBtn" class="btn btn-danger" style="display: none;">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+            <span id="userRoleBadge" class="user-badge" style="display: none;"></span>
+        </div>
+    </div>
+
+    <div class="container">
         <!-- New Request Modal -->
         <div id="newRequestModal" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2 class="modal-title">Create New Request</h2>
+                    <h2 class="modal-title"><i class="fas fa-file-alt"></i> New Request</h2>
                     <button class="close-btn" id="closeNewRequestModal">&times;</button>
                 </div>
                 <form id="requestForm">
                     <div class="form-group">
-                        <label for="raiserName">Your Name</label>
+                        <label for="raiserName"><i class="fas fa-user"></i> Your Name</label>
                         <input type="text" id="raiserName" class="form-control" required>
                     </div>
                     <div class="form-group">
-                        <label for="requestType">Request Type</label>
+                        <label for="requestType"><i class="fas fa-tag"></i> Request Type</label>
                         <select id="requestType" class="form-control" required>
                             <option value="">Select a request type</option>
-                            <option value="IT Support">IT Support</option>
-                            <option value="HR Query">HR Query</option>
-                            <option value="Facilities">Facilities</option>
-                            <option value="Finance">Finance</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="description">Description</label>
-                        <textarea id="description" class="form-control" rows="4" required></textarea>
+                        <label for="description"><i class="fas fa-align-left"></i> Description</label>
+                        <textarea id="description" class="form-control" rows="5" required></textarea>
                     </div>
-                    <div class="text-center">
-                        <button type="submit" class="btn btn-primary">
+                    <div class="text-center" style="margin-top: 2rem;">
+                        <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem;">
                             <i class="fas fa-paper-plane"></i> Submit Request
                         </button>
                     </div>
@@ -319,39 +490,124 @@
         <div id="adminLoginModal" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2 class="modal-title">Admin Login</h2>
+                    <h2 class="modal-title"><i class="fas fa-user-shield"></i> Admin Login</h2>
                     <button class="close-btn" id="closeAdminLoginModal">&times;</button>
                 </div>
                 <div class="form-group">
-                    <label for="username">Username</label>
+                    <label for="username"><i class="fas fa-user"></i> Username</label>
                     <input type="text" id="username" class="form-control" required>
                 </div>
                 <div class="form-group">
-                    <label for="password">Password</label>
+                    <label for="password"><i class="fas fa-key"></i> Password</label>
                     <input type="password" id="password" class="form-control" required>
                 </div>
-                <div class="text-center">
-                    <button onclick="login()" class="btn btn-primary">
+                <div class="text-center" style="margin-top: 2rem;">
+                    <button onclick="login()" class="btn btn-primary" style="padding: 0.75rem 2rem;">
                         <i class="fas fa-sign-in-alt"></i> Login
                     </button>
                 </div>
             </div>
         </div>
 
-        <!-- Requests Table -->
+        <!-- Notifications Modal -->
+        <div id="notificationsModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title"><i class="fas fa-bell"></i> Notifications</h2>
+                    <button class="close-btn" id="closeNotificationsModal">&times;</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table" id="notificationsTable">
+                        <thead>
+                            <tr>
+                                <th>Request #</th>
+                                <th>Type</th>
+                                <th>Description</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Notifications will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="noNotifications" class="empty-state" style="display: none;">
+                    <i class="fas fa-bell-slash"></i>
+                    <h3>No new notifications</h3>
+                    <p>You're all caught up!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manage Request Types Modal (Admin Only) -->
+        <div id="manageTypesModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title"><i class="fas fa-cog"></i> Manage Request Types</h2>
+                    <button class="close-btn" id="closeManageTypesModal">&times;</button>
+                </div>
+                <div class="form-group">
+                    <label for="newTypeName"><i class="fas fa-plus"></i> Add New Request Type</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="text" id="newTypeName" class="form-control" placeholder="Enter new type name">
+                        <button onclick="addRequestType()" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Add
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive" style="margin-top: 1.5rem;">
+                    <table class="table" id="requestTypesTable">
+                        <thead>
+                            <tr>
+                                <th>Request Type</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Request types will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Request Details Modal -->
+        <div id="requestDetailsModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title"><i class="fas fa-file-alt"></i> Request Details</h2>
+                    <button class="close-btn" id="closeRequestDetailsModal">&times;</button>
+                </div>
+                <div id="requestDetailsContent" style="padding: 0 1rem;">
+                    <!-- Request details will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
         <div class="card">
-            <h2 class="card-title"><i class="fas fa-list"></i> All Requests</h2>
+            <div class="card-title">
+                <span><i class="fas fa-list"></i> Request Dashboard</span>
+                <div class="filters">
+                    <button class="filter-btn active" data-status="all">All Requests</button>
+                    <button class="filter-btn" data-status="Open">Open</button>
+                    <button class="filter-btn" data-status="Closed">Closed</button>
+                    <button id="manageTypesBtn" class="btn btn-secondary admin-only">
+                        <i class="fas fa-cog"></i> Manage Types
+                    </button>
+                </div>
+            </div>
             <div class="table-responsive">
                 <table class="table" id="requestsTable">
                     <thead>
                         <tr>
-                            <th>SNo</th>
-                            <th>Request Type</th>
+                            <th>Request #</th>
+                            <th>Type</th>
                             <th>Description</th>
-                            <th>Raiser</th>
-                            <th>Updates</th>
+                            <th>Requested By</th>
                             <th>Status</th>
-                            <th>Created At</th>
+                            <th>Created</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -359,233 +615,603 @@
                         <!-- Requests will be loaded here -->
                     </tbody>
                 </table>
+                <div id="noRequests" class="empty-state">
+                    <i class="fas fa-inbox"></i>
+                    <h3>No requests found</h3>
+                    <p>Submit a new request to get started</p>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        let isAdmin = false;
-        let currentEditingRow = null;
+        // Global variables
+        let currentUser = null;
+        let currentUserRole = null;
+        let requestTypes = [];
+        let notifications = [];
 
         // DOM Elements
         const newRequestBtn = document.getElementById('newRequestBtn');
         const adminLoginBtn = document.getElementById('adminLoginBtn');
+        const adminLogoutBtn = document.getElementById('adminLogoutBtn');
+        const notificationsBtn = document.getElementById('notificationsBtn');
+        const manageTypesBtn = document.getElementById('manageTypesBtn');
+        const userRoleBadge = document.getElementById('userRoleBadge');
+        const notificationCount = document.getElementById('notificationCount');
+        const noRequests = document.getElementById('noRequests');
+        const noNotifications = document.getElementById('noNotifications');
+
+        // Modals
         const newRequestModal = document.getElementById('newRequestModal');
         const adminLoginModal = document.getElementById('adminLoginModal');
+        const notificationsModal = document.getElementById('notificationsModal');
+        const manageTypesModal = document.getElementById('manageTypesModal');
+        const requestDetailsModal = document.getElementById('requestDetailsModal');
+
+        // Close buttons
         const closeNewRequestModal = document.getElementById('closeNewRequestModal');
         const closeAdminLoginModal = document.getElementById('closeAdminLoginModal');
+        const closeNotificationsModal = document.getElementById('closeNotificationsModal');
+        const closeManageTypesModal = document.getElementById('closeManageTypesModal');
+        const closeRequestDetailsModal = document.getElementById('closeRequestDetailsModal');
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadRequestTypes();
+            setupEventListeners();
+            checkAuthStatus();
+
+            // Request notification permission
+            if ('Notification' in window) {
+                Notification.requestPermission();
+            }
+        });
+
+        // Check authentication status
+        function checkAuthStatus() {
+            fetch('http://localhost:5000/api/check-auth', {
+                credentials: 'include'
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        currentUser = data.user;
+                        currentUserRole = data.role;
+                        updateUIForLoggedInUser();
+                    }
+                })
+                .catch(error => console.error('Error checking auth status:', error));
+        }
+
+        // Update UI for logged in user
+        function updateUIForLoggedInUser() {
+            adminLoginBtn.style.display = 'none';
+            adminLogoutBtn.style.display = 'inline-block';
+            userRoleBadge.style.display = 'inline-block';
+            userRoleBadge.textContent = currentUserRole.toUpperCase();
+
+            // Show admin-only elements
+            document.querySelectorAll('.admin-only').forEach(el => {
+                el.style.display = 'inline-block';
+            });
+
+            checkNotifications();
+            fetchRequests();
+        }
 
         // Event Listeners
-        document.addEventListener('DOMContentLoaded', fetchRequests);
-        document.getElementById('requestForm').addEventListener('submit', submitRequest);
-        newRequestBtn.addEventListener('click', () => newRequestModal.classList.add('active'));
-        adminLoginBtn.addEventListener('click', () => adminLoginModal.classList.add('active'));
-        closeNewRequestModal.addEventListener('click', () => newRequestModal.classList.remove('active'));
-        closeAdminLoginModal.addEventListener('click', () => adminLoginModal.classList.remove('active'));
+        function setupEventListeners() {
+            newRequestBtn.addEventListener('click', () => newRequestModal.classList.add('active'));
+            adminLoginBtn.addEventListener('click', () => adminLoginModal.classList.add('active'));
+            adminLogoutBtn.addEventListener('click', logout);
+            notificationsBtn.addEventListener('click', () => {
+                notificationsModal.classList.add('active');
+                fetchNotifications();
+            });
+            manageTypesBtn.addEventListener('click', () => manageTypesModal.classList.add('active'));
 
-        // Close modals when clicking outside
-        window.addEventListener('click', (e) => {
-            if (e.target === newRequestModal) newRequestModal.classList.remove('active');
-            if (e.target === adminLoginModal) adminLoginModal.classList.remove('active');
-        });
+            closeNewRequestModal.addEventListener('click', () => newRequestModal.classList.remove('active'));
+            closeAdminLoginModal.addEventListener('click', () => adminLoginModal.classList.remove('active'));
+            closeNotificationsModal.addEventListener('click', () => notificationsModal.classList.remove('active'));
+            closeManageTypesModal.addEventListener('click', () => manageTypesModal.classList.remove('active'));
+            closeRequestDetailsModal.addEventListener('click', () => requestDetailsModal.classList.remove('active'));
+
+            document.getElementById('requestForm').addEventListener('submit', submitRequest);
+
+            // Filter buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    fetchRequests(this.dataset.status);
+                });
+            });
+
+            // Close modals when clicking outside
+            window.addEventListener('click', (e) => {
+                if (e.target === newRequestModal) newRequestModal.classList.remove('active');
+                if (e.target === adminLoginModal) adminLoginModal.classList.remove('active');
+                if (e.target === notificationsModal) notificationsModal.classList.remove('active');
+                if (e.target === manageTypesModal) manageTypesModal.classList.remove('active');
+                if (e.target === requestDetailsModal) requestDetailsModal.classList.remove('active');
+            });
+        }
+
+        // Load request types
+        function loadRequestTypes() {
+            fetch('http://localhost:5000/api/request-types')
+                .then(response => response.json())
+                .then(types => {
+                    requestTypes = types;
+                    const select = document.getElementById('requestType');
+                    select.innerHTML = '<option value="">Select a request type</option>';
+                    types.forEach(type => {
+                        const option = document.createElement('option');
+                        option.value = type;
+                        option.textContent = type;
+                        select.appendChild(option);
+                    });
+
+                    // Also populate in manage types modal
+                    const typesTable = document.querySelector('#requestTypesTable tbody');
+                    typesTable.innerHTML = '';
+                    types.forEach(type => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                    <td>${type}</td>
+                    <td>
+                        <button onclick="removeRequestType('${type}')" class="btn btn-danger btn-sm">
+                            <i class="fas fa-trash"></i> Remove
+                        </button>
+                    </td>
+                `;
+                        typesTable.appendChild(row);
+                    });
+                })
+                .catch(error => console.error('Error loading request types:', error));
+        }
+
+        // Add request type
+        function addRequestType() {
+            const typeName = document.getElementById('newTypeName').value.trim();
+            if (!typeName) {
+                showToast('Please enter a type name', 'error');
+                return;
+            }
+
+            fetch('http://localhost:5000/api/request-types', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({ type_name: typeName })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('newTypeName').value = '';
+                        loadRequestTypes();
+                        showToast('Request type added successfully', 'success');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error adding request type:', error);
+                    showToast('Failed to add request type', 'error');
+                });
+        }
+
+        // Remove request type
+        function removeRequestType(typeName) {
+            if (!confirm(`Are you sure you want to remove "${typeName}"?`)) return;
+
+            fetch('http://localhost:5000/api/request-types', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({ type_name: typeName })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        loadRequestTypes();
+                        showToast('Request type removed successfully', 'success');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error removing request type:', error);
+                    showToast('Failed to remove request type', 'error');
+                });
+        }
 
         // Login function
         function login() {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-            
+
+            if (!username || !password) {
+                showToast('Please enter username and password', 'error');
+                return;
+            }
+
             fetch('http://localhost:5000/api/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
+                credentials: 'include',
                 body: JSON.stringify({
                     username: username,
                     password: password
                 })
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    isAdmin = true;
-                    adminLoginModal.classList.remove('active');
-                    adminLoginBtn.innerHTML = '<i class="fas fa-user-shield"></i> Admin Mode';
-                    adminLoginBtn.classList.remove('btn-secondary');
-                    adminLoginBtn.classList.add('btn-danger');
-                    alert('Login successful! You now have admin privileges.');
-                    fetchRequests();
-                } else {
-                    alert('Login failed. Please check your credentials.');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred during login.');
-            });
-        }
-
-        // Fetch all requests
-        function fetchRequests() {
-            fetch('http://localhost:5000/api/requests')
                 .then(response => response.json())
                 .then(data => {
-                    const tableBody = document.querySelector('#requestsTable tbody');
-                    tableBody.innerHTML = '';
-                    
-                    data.forEach(request => {
-                        const row = document.createElement('tr');
-                        row.dataset.sno = request.sno;
-                        
-                        row.innerHTML = `
-                            <td>${request.sno}</td>
-                            <td>${request.request_type}</td>
-                            <td>${request.description}</td>
-                            <td>${request.raiser_name}</td>
-                            <td>${request.updates}</td>
-                            <td><span class="status-badge status-${request.status.toLowerCase()}">${request.status}</span></td>
-                            <td>${request.created_at}</td>
-                            <td class="action-buttons">
-                                ${isAdmin ? `<button onclick="showEditForm(${request.sno})" class="btn btn-secondary btn-sm">
-                                    <i class="fas fa-edit"></i> Edit
-                                </button>` : ''}
-                            </td>
-                        `;
-                        
-                        // Add edit form (hidden by default)
-                        const editForm = document.createElement('div');
-                        editForm.className = 'edit-row-form';
-                        editForm.id = `edit-form-${request.sno}`;
-                        editForm.innerHTML = `
-                            <div class="form-group">
-                                <label>Updates</label>
-                                <textarea id="update-text-${request.sno}" class="form-control" rows="2">${request.updates}</textarea>
-                            </div>
-                            <div class="form-group">
-                                <label>Status</label>
-                                <select id="status-select-${request.sno}" class="form-control">
-                                    <option value="Open" ${request.status === 'Open' ? 'selected' : ''}>Open</option>
-                                    <option value="Closed" ${request.status === 'Closed' ? 'selected' : ''}>Closed</option>
-                                </select>
-                            </div>
-                            <div class="action-buttons">
-                                <button onclick="saveEdit(${request.sno})" class="btn btn-primary btn-sm">
-                                    <i class="fas fa-save"></i> Save
-                                </button>
-                                <button onclick="cancelEdit(${request.sno})" class="btn btn-secondary btn-sm">
-                                    <i class="fas fa-times"></i> Cancel
-                                </button>
-                            </div>
-                        `;
-                        
-                        row.appendChild(editForm);
-                        tableBody.appendChild(row);
-                    });
+                    if (data.success) {
+                        currentUser = username;
+                        currentUserRole = data.role;
+                        adminLoginModal.classList.remove('active');
+                        updateUIForLoggedInUser();
+                        showToast('Login successful', 'success');
+                    } else {
+                        showToast('Invalid credentials', 'error');
+                    }
                 })
                 .catch(error => {
                     console.error('Error:', error);
+                    showToast('Login failed', 'error');
                 });
         }
 
-        // Show edit form for a row
-        function showEditForm(sno) {
-            if (currentEditingRow) {
-                document.getElementById(`edit-form-${currentEditingRow}`).classList.remove('active');
+        // Logout function
+        function logout() {
+            fetch('http://localhost:5000/api/logout', {
+                method: 'POST',
+                credentials: 'include'
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        currentUser = null;
+                        currentUserRole = null;
+                        adminLoginBtn.style.display = 'inline-block';
+                        adminLogoutBtn.style.display = 'none';
+                        userRoleBadge.style.display = 'none';
+
+                        // Hide admin-only elements
+                        document.querySelectorAll('.admin-only').forEach(el => {
+                            el.style.display = 'none';
+                        });
+
+                        // Clear notifications
+                        notificationCount.style.display = 'none';
+
+                        showToast('Logged out successfully', 'success');
+                        fetchRequests();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('Logout failed', 'error');
+                });
+        }
+
+        // Fetch requests with optional status filter
+        function fetchRequests(status = getCurrentFilter()) {
+            let url = 'http://localhost:5000/api/requests';
+            if (status !== 'all') {
+                url += `?status=${status}`;
             }
-            document.getElementById(`edit-form-${sno}`).classList.add('active');
-            currentEditingRow = sno;
+
+            fetch(url, {
+                credentials: 'include'
+            })
+                .then(response => response.json())
+                .then(requests => {
+                    updateRequestsTable(requests);
+                })
+                .catch(error => {
+                    console.error('Error fetching requests:', error);
+                    noRequests.style.display = 'block';
+                });
         }
 
-        // Cancel editing
-        function cancelEdit(sno) {
-            document.getElementById(`edit-form-${sno}`).classList.remove('active');
-            currentEditingRow = null;
+        function getCurrentFilter() {
+            const activeFilter = document.querySelector('.filter-btn.active');
+            return activeFilter ? activeFilter.dataset.status : 'all';
         }
 
-        // Save edited row
-        function saveEdit(sno) {
-            const updateText = document.getElementById(`update-text-${sno}`).value;
-            const status = document.getElementById(`status-select-${sno}`).value;
-            
+        function updateRequestsTable(requests) {
+            const tableBody = document.querySelector('#requestsTable tbody');
+            tableBody.innerHTML = '';
+
+            if (requests.length === 0) {
+                noRequests.style.display = 'block';
+            } else {
+                noRequests.style.display = 'none';
+                requests.forEach(request => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                <td>#${request.sno}</td>
+                <td>${request.request_type}</td>
+                <td>${request.description.substring(0, 50)}${request.description.length > 50 ? '...' : ''}</td>
+                <td>${request.raiser_name}</td>
+                <td><span class="badge badge-${request.status.toLowerCase()}">${request.status}</span></td>
+                <td>${new Date(request.created_at).toLocaleString()}</td>
+                <td class="action-buttons">
+                    <button onclick="showRequestDetails(${request.sno})" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-eye"></i> View
+                    </button>
+                    ${currentUserRole && request.current_admin === currentUserRole ? `
+                        ${request.current_admin === 'admin1' ? `
+                            <button onclick="showAdminOptions(${request.sno})" class="btn btn-primary btn-sm">
+                                <i class="fas fa-share"></i> Forward
+                            </button>
+                        ` : `
+                            <button onclick="approveRequest(${request.sno})" class="btn btn-success btn-sm">
+                                <i class="fas fa-check"></i> Approve
+                            </button>
+                        `}
+                    ` : ''}
+                </td>
+            `;
+                    tableBody.appendChild(row);
+                });
+            }
+        }
+
+        // Show request details
+        function showRequestDetails(sno) {
+            fetch('http://localhost:5000/api/requests', {
+                credentials: 'include'
+            })
+                .then(response => response.json())
+                .then(requests => {
+                    const request = requests.find(r => r.sno === sno);
+                    if (request) {
+                        const content = document.getElementById('requestDetailsContent');
+                        content.innerHTML = `
+                <div class="form-group">
+                    <label>Request #</label>
+                    <p>${request.sno}</p>
+                </div>
+                <div class="form-group">
+                    <label>Type</label>
+                    <p>${request.request_type}</p>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <p>${request.description}</p>
+                </div>
+                <div class="form-group">
+                    <label>Requested By</label>
+                    <p>${request.raiser_name}</p>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <p><span class="badge badge-${request.status.toLowerCase()}">${request.status}</span></p>
+                </div>
+                <div class="form-group">
+                    <label>Approval Path</label>
+                    <p>${request.approval_path}</p>
+                </div>
+                <div class="form-group">
+                    <label>Updates</label>
+                    <div class="updates-content">${request.updates}</div>
+                </div>
+                <div class="form-group">
+                    <label>Created At</label>
+                    <p>${new Date(request.created_at).toLocaleString()}</p>
+                </div>
+                <div class="form-group">
+                    <label>Last Updated</label>
+                    <p>${new Date(request.last_updated).toLocaleString()}</p>
+                </div>
+            `;
+                        requestDetailsModal.classList.add('active');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching request details:', error);
+                    showToast('Failed to load request details', 'error');
+                });
+        }
+
+        // Show admin options for forwarding
+        function showAdminOptions(sno) {
+            const content = document.getElementById('requestDetailsContent');
+            content.innerHTML = `
+        <div style="text-align: center; padding: 2rem;">
+            <h3 style="margin-bottom: 2rem;">Forward Request #${sno}</h3>
+            <div style="display: flex; gap: 1.5rem; justify-content: center;">
+                <button onclick="forwardRequest(${sno}, 'admin2')" class="btn btn-primary" style="padding: 1rem 2rem;">
+                    <i class="fas fa-user-shield"></i> Admin 2
+                </button>
+                <button onclick="forwardRequest(${sno}, 'admin3')" class="btn btn-primary" style="padding: 1rem 2rem;">
+                    <i class="fas fa-user-shield"></i> Admin 3
+                </button>
+            </div>
+        </div>
+    `;
+            requestDetailsModal.classList.add('active');
+        }
+
+        // Forward request to another admin
+        function forwardRequest(sno, nextAdmin) {
             fetch(`http://localhost:5000/api/requests/${sno}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': 'Bearer dummy-token'
                 },
-                body: JSON.stringify({
-                    updates: updateText,
-                    status: status
+                credentials: 'include',
+                body: JSON.stringify({ next_admin: nextAdmin })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast(`Request forwarded to ${nextAdmin}`, 'success');
+                        requestDetailsModal.classList.remove('active');
+                        // User will need to refresh page to see changes
+                    }
                 })
+                .catch(error => {
+                    console.error('Error forwarding request:', error);
+                    showToast('Failed to forward request', 'error');
+                });
+        }
+
+        // Approve request
+        function approveRequest(sno) {
+            fetch(`http://localhost:5000/api/requests/${sno}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({ approve: true })
             })
-            .then(response => {
-                if (!response.ok) {
-                    return response.json().then(err => { throw err; });
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    cancelEdit(sno);
-                    fetchRequests();
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert(error.error || 'An error occurred while updating the request.');
-            });
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('Request approved successfully', 'success');
+                        // User will need to refresh page to see changes
+                    }
+                })
+                .catch(error => {
+                    console.error('Error approving request:', error);
+                    showToast('Failed to approve request', 'error');
+                });
         }
 
         // Submit new request
-       function submitRequest(e) {
-        e.preventDefault();
-        const requestType = document.getElementById('requestType').value;
-        const description = document.getElementById('description').value;
-        const raiserName = document.getElementById('raiserName').value;
-        
-        // Validate inputs
-        if (!raiserName || raiserName.trim() === '') {
-            alert('Please enter your name');
-            return;
-        }
-        if (!requestType) {
-            alert('Please select a request type');
-            return;
-        }
-        if (!description || description.trim() === '') {
-            alert('Please enter a description');
-            return;
+        function submitRequest(e) {
+            e.preventDefault();
+            const requestType = document.getElementById('requestType').value;
+            const description = document.getElementById('description').value;
+            const raiserName = document.getElementById('raiserName').value;
+
+            if (!raiserName || !requestType || !description) {
+                showToast('Please fill all fields', 'error');
+                return;
+            }
+
+            fetch('http://localhost:5000/api/requests', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    request_type: requestType,
+                    description: description,
+                    raiser_name: raiserName
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast(`Request #${data.sno} submitted successfully`, 'success');
+                        document.getElementById('requestForm').reset();
+                        newRequestModal.classList.remove('active');
+                        // User will need to refresh page to see the new request
+                    }
+                })
+                .catch(error => {
+                    console.error('Error submitting request:', error);
+                    showToast('Failed to submit request', 'error');
+                });
         }
 
-        fetch('http://localhost:5000/api/requests', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                request_type: requestType,
-                description: description,
-                raiser_name: raiserName
+        // Check notifications
+        function checkNotifications() {
+            if (!currentUser) {
+                notificationCount.style.display = 'none';
+                return;
+            }
+
+            fetch('http://localhost:5000/api/notifications', {
+                credentials: 'include'
             })
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => { throw err; });
+                .then(response => response.json())
+                .then(data => {
+                    notifications = data;
+                    if (notifications.length > 0) {
+                        notificationCount.textContent = notifications.length;
+                        notificationCount.style.display = 'flex';
+
+                        // Show desktop notification
+                        if (Notification.permission === 'granted') {
+                            new Notification(`You have ${notifications.length} pending requests`, {
+                                body: 'Click to view notifications',
+                                icon: 'https://cdn-icons-png.flaticon.com/512/3114/3114883.png'
+                            });
+                        } else if (Notification.permission !== 'denied') {
+                            Notification.requestPermission().then(permission => {
+                                if (permission === 'granted') {
+                                    new Notification(`You have ${notifications.length} pending requests`, {
+                                        body: 'Click to view notifications',
+                                        icon: 'https://cdn-icons-png.flaticon.com/512/3114/3114883.png'
+                                    });
+                                }
+                            });
+                        }
+                    } else {
+                        notificationCount.style.display = 'none';
+                    }
+                })
+                .catch(error => console.error('Error checking notifications:', error));
+        }
+
+        // Fetch notifications for modal
+        function fetchNotifications() {
+            const tableBody = document.querySelector('#notificationsTable tbody');
+            tableBody.innerHTML = '';
+
+            if (notifications.length === 0) {
+                noNotifications.style.display = 'block';
+                tableBody.style.display = 'none';
+            } else {
+                noNotifications.style.display = 'none';
+                tableBody.style.display = '';
+
+                notifications.forEach(notification => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                <td>#${notification.sno}</td>
+                <td>${notification.request_type}</td>
+                <td>${notification.description.substring(0, 30)}${notification.description.length > 30 ? '...' : ''}</td>
+                <td><span class="badge badge-${notification.status.toLowerCase()}">${notification.status}</span></td>
+                <td>
+                    <button onclick="showRequestDetails(${notification.sno})" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-eye"></i> View
+                    </button>
+                </td>
+            `;
+                    tableBody.appendChild(row);
+                });
             }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                alert(`Request submitted successfully! SNo: ${data.sno}`);
-                document.getElementById('requestForm').reset();
-                newRequestModal.classList.remove('active');
-                fetchRequests();
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert(error.error || 'An error occurred while submitting the request.');
-        });
-    }
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+        <span>${message}</span>
+    `;
+
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
     </script>
 </body>
+
 </html>

@@ -1,178 +1,229 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+from flask import Flask, request, jsonify, session
+from flask_session import Session
+from flask_cors import CORS, cross_origin
 import pandas as pd
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 
-# Initialize Flask app
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+app.config['SECRET_KEY'] = 'your-very-secret-key-123'  # Change this for production
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SECURE'] = True  # For HTTPS
+Session(app)
+
+CORS(app, supports_credentials=True, origins=["http://localhost"])  # Adjust for your frontend URL
 
 # Configuration
 EXCEL_FILE = 'requests.xlsx'
-ADMIN_USERS = {
-    'admin1': generate_password_hash('password1'),
-    'admin2': generate_password_hash('password2'),
-    'admin3': generate_password_hash('password3')
+REQUEST_TYPES_FILE = 'request_types.txt'
+ADMINS = {
+    'admin1': {'password': generate_password_hash('password1'), 'role': 'admin1'},
+    'admin2': {'password': generate_password_hash('password2'), 'role': 'admin2'},
+    'admin3': {'password': generate_password_hash('password3'), 'role': 'admin3'}
 }
 
-# Helper function to initialize or get DataFrame
-def get_dataframe():
+# Initialize files
+def init_files():
     if not os.path.exists(EXCEL_FILE):
         df = pd.DataFrame(columns=[
-            'sno', 
-            'request_type', 
-            'description', 
-            'raiser_name',
-            'updates', 
-            'status', 
-            'created_at'
+            'sno', 'request_type', 'description', 'raiser_name',
+            'updates', 'status', 'created_at', 'current_admin',
+            'approval_path', 'last_updated', 'notification_sent'
         ])
         df.to_excel(EXCEL_FILE, index=False)
-        return df
-    return pd.read_excel(EXCEL_FILE)
+    
+    if not os.path.exists(REQUEST_TYPES_FILE):
+        with open(REQUEST_TYPES_FILE, 'w') as f:
+            f.write("IT Support\nHR Query\nFacilities\nFinance")
 
-# Helper function to save DataFrame
-def save_dataframe(df):
-    df.to_excel(EXCEL_FILE, index=False)
+# Get request types
+def get_request_types():
+    with open(REQUEST_TYPES_FILE, 'r') as f:
+        return [line.strip() for line in f.readlines() if line.strip()]
 
-# Authentication middleware
-def check_auth():
-    auth_header = request.headers.get('Authorization')
-    if not auth_header:
-        return False
-    # In a real app, you would validate JWT or session token here
-    return True
+# Add request type
+def add_request_type(type_name):
+    types = get_request_types()
+    if type_name not in types:
+        with open(REQUEST_TYPES_FILE, 'a') as f:
+            f.write(f"\n{type_name}")
+
+# Remove request type
+def remove_request_type(type_name):
+    types = get_request_types()
+    if type_name in types:
+        types.remove(type_name)
+        with open(REQUEST_TYPES_FILE, 'w') as f:
+            f.write("\n".join(types))
 
 # Routes
 @app.route('/api/login', methods=['POST'])
+@cross_origin(supports_credentials=True)
 def login():
     data = request.get_json()
-    if not data or 'username' not in data or 'password' not in data:
-        return jsonify({'success': False, 'message': 'Missing credentials'}), 400
+    username = data.get('username')
+    password = data.get('password')
     
-    username = data['username']
-    password = data['password']
-    
-    if username in ADMIN_USERS and check_password_hash(ADMIN_USERS[username], password):
+    if username in ADMINS and check_password_hash(ADMINS[username]['password'], password):
+        session['user'] = username
+        session['role'] = ADMINS[username]['role']
         return jsonify({
-            'success': True, 
-            'message': 'Login successful',
-            'token': 'dummy-token'  # In real app, return JWT
+            'success': True,
+            'role': ADMINS[username]['role'],
+            'message': 'Login successful'
         })
     return jsonify({'success': False, 'message': 'Invalid credentials'}), 401
 
-@app.route('/api/requests', methods=['GET'])
-def get_requests():
-    try:
-        df = get_dataframe()
-        # Convert NaN values to empty strings for JSON serialization
-        df = df.fillna('')
-        return jsonify(df.to_dict('records'))
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+@app.route('/api/check-auth', methods=['GET'])
+@cross_origin(supports_credentials=True)
+def check_auth():
+    if 'user' in session:
+        return jsonify({
+            'success': True,
+            'user': session['user'],
+            'role': session['role']
+        })
+    return jsonify({'success': False}), 401
 
-@app.route('/api/requests', methods=['POST'])
-def create_request():
+@app.route('/api/logout', methods=['POST'])
+@cross_origin(supports_credentials=True)
+def logout():
+    session.clear()
+    return jsonify({'success': True, 'message': 'Logged out successfully'})
+
+@app.route('/api/request-types', methods=['GET', 'POST', 'DELETE'])
+@cross_origin(supports_credentials=True)
+def handle_request_types():
+    if 'user' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    if request.method == 'GET':
+        return jsonify(get_request_types())
+    
     data = request.get_json()
+    type_name = data.get('type_name')
     
-    # Validate required fields
-    required_fields = ['request_type', 'description', 'raiser_name']
-    if not all(field in data for field in required_fields):
-        return jsonify({'error': 'Missing required fields'}), 400
+    if request.method == 'POST':
+        if not type_name:
+            return jsonify({'error': 'Type name required'}), 400
+        add_request_type(type_name)
+        return jsonify({'success': True})
     
-    # Validate field types and content
-    if not isinstance(data.get('raiser_name'), str) or not data['raiser_name'].strip():
-        return jsonify({'error': 'Invalid raiser name'}), 400
-    if not isinstance(data.get('description'), str) or not data['description'].strip():
-        return jsonify({'error': 'Invalid description'}), 400
-    
-    try:
-        df = get_dataframe()
+    if request.method == 'DELETE':
+        if not type_name:
+            return jsonify({'error': 'Type name required'}), 400
+        remove_request_type(type_name)
+        return jsonify({'success': True})
+
+@app.route('/api/requests', methods=['GET', 'POST'])
+@cross_origin(supports_credentials=True)
+def handle_requests():
+    if request.method == 'GET':
+        df = pd.read_excel(EXCEL_FILE).fillna('')
+        status_filter = request.args.get('status', 'all')
         
-        # Generate new SNo
+        if status_filter != 'all':
+            df = df[df['status'] == status_filter]
+        
+        return jsonify(df.to_dict('records'))
+    
+    if request.method == 'POST':
+        data = request.get_json()
+        required_fields = ['request_type', 'description', 'raiser_name']
+        
+        if not all(field in data for field in required_fields):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        df = pd.read_excel(EXCEL_FILE)
         new_sno = df['sno'].max() + 1 if not df.empty else 1
         
-        # Create new request
         new_request = {
             'sno': new_sno,
-            'request_type': data['request_type'].strip(),
-            'description': data['description'].strip(),
-            'raiser_name': data['raiser_name'].strip(),
-            'updates': 'Request created',
+            'request_type': data['request_type'],
+            'description': data['description'],
+            'raiser_name': data['raiser_name'],
+            'updates': 'Request created - Pending admin1 approval',
             'status': 'Open',
-            'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'current_admin': 'admin1',
+            'approval_path': 'admin1',
+            'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'notification_sent': False
         }
         
-        # Add to DataFrame
         df = pd.concat([df, pd.DataFrame([new_request])], ignore_index=True)
-        save_dataframe(df)
+        df.to_excel(EXCEL_FILE, index=False)
         
-        return jsonify({
-            'success': True, 
-            'sno': new_sno,
-            'message': 'Request created successfully'
-        })
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'success': True, 'sno': new_sno})
 
 @app.route('/api/requests/<int:sno>', methods=['PUT'])
+@cross_origin(supports_credentials=True)
 def update_request(sno):
-    # Check authentication
-    if not check_auth():
+    if 'user' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
     data = request.get_json()
-    if not data:
-        return jsonify({'error': 'No data provided'}), 400
+    df = pd.read_excel(EXCEL_FILE)
     
-    try:
-        df = get_dataframe()
+    if sno not in df['sno'].values:
+        return jsonify({'error': 'Request not found'}), 404
+    
+    idx = df.index[df['sno'] == sno].tolist()[0]
+    current_admin = df.at[idx, 'current_admin']
+    user_role = session['role']
+    
+    if user_role != current_admin:
+        return jsonify({'error': 'Not authorized to update this request'}), 403
+    
+    if 'next_admin' in data:
+        next_admin = data['next_admin']
+        valid_next = ['admin2', 'admin3'] if user_role == 'admin1' else ['admin3']
         
-        # Find request
-        if sno not in df['sno'].values:
-            return jsonify({'error': 'Request not found'}), 404
+        if next_admin not in valid_next:
+            return jsonify({'error': 'Invalid next admin'}), 400
         
-        idx = df.index[df['sno'] == sno].tolist()[0]
-        
-        # Only allow updates to specific fields
-        updatable_fields = ['updates', 'status']
-        updates_made = False
-        
-        for field in updatable_fields:
-            if field in data and isinstance(data[field], str) and data[field].strip():
-                df.at[idx, field] = data[field].strip()
-                updates_made = True
-        
-        if not updates_made:
-            return jsonify({'error': 'No valid updates provided'}), 400
-        
-        # Add update timestamp if updates were modified
-        if 'updates' in data:
-            df.at[idx, 'updated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        
-        save_dataframe(df)
-        
-        return jsonify({
-            'success': True,
-            'message': 'Request updated successfully'
-        })
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        df.at[idx, 'current_admin'] = next_admin
+        df.at[idx, 'approval_path'] += f"->{next_admin}"
+        df.at[idx, 'updates'] += f"\nSent to {next_admin} for approval"
+        df.at[idx, 'notification_sent'] = False
+    
+    if 'approve' in data:
+        if user_role == 'admin2':
+            df.at[idx, 'updates'] += f"\nApproved by admin2 - Pending admin3 approval"
+            df.at[idx, 'current_admin'] = 'admin3'
+            df.at[idx, 'approval_path'] += '->admin3'
+        elif user_role == 'admin3':
+            df.at[idx, 'status'] = 'Closed'
+            df.at[idx, 'updates'] += f"\nApproved by admin3 - Request closed"
+        df.at[idx, 'notification_sent'] = False
+    
+    df.at[idx, 'last_updated'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    df.to_excel(EXCEL_FILE, index=False)
+    
+    return jsonify({'success': True})
 
-# Health check endpoint
-@app.route('/api/health', methods=['GET'])
-def health_check():
-    return jsonify({
-        'status': 'healthy',
-        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    })
+@app.route('/api/notifications', methods=['GET'])
+@cross_origin(supports_credentials=True)
+def get_notifications():
+    if 'user' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    user_role = session['role']
+    df = pd.read_excel(EXCEL_FILE).fillna('')
+    
+    # Get pending notifications for current admin
+    notifications = df[(df['current_admin'] == user_role) & (df['notification_sent'] == False)]
+    
+    # Mark notifications as sent
+    if not notifications.empty:
+        for idx in notifications.index:
+            df.at[idx, 'notification_sent'] = True
+        df.to_excel(EXCEL_FILE, index=False)
+    
+    return jsonify(notifications.to_dict('records'))
 
 if __name__ == '__main__':
-    # Create Excel file if it doesn't exist
-    if not os.path.exists(EXCEL_FILE):
-        get_dataframe()
-    app.run(debug=True)
+    init_files()
+    app.run(debug=True, host='0.0.0.0', port=5000)

@@ -336,6 +336,10 @@
             display: none;
         }
 
+        .user-only {
+            display: none;
+        }
+
         .notification-badge {
             position: absolute;
             top: -5px;
@@ -430,6 +434,86 @@
                 transform: rotate(360deg);
             }
         }
+
+        .dashboard-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .dashboard-card {
+            background: white;
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            text-align: center;
+        }
+
+        .dashboard-card h3 {
+            color: var(--gray);
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .dashboard-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .radio-option input {
+            margin: 0;
+        }
+
+        .description-options {
+            margin-top: 0.5rem;
+            padding-left: 1.5rem;
+            border-left: 2px solid #e0e0e0;
+        }
+
+        .description-option {
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 4px;
+        }
+
+        .description-option:hover {
+            background-color: #f5f5f5;
+        }
+
+        .manage-types-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .manage-types-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .manage-section {
+            background: white;
+            border-radius: var(--radius);
+            padding: 1rem;
+            box-shadow: var(--shadow);
+        }
     </style>
 </head>
 
@@ -437,17 +521,23 @@
     <div class="header">
         <h1><i class="fas fa-fire-extinguisher"></i> RequestFlow Pro</h1>
         <div class="header-actions">
-            <button id="notificationsBtn" class="btn btn-secondary notification-btn">
+            <button id="dashboardBtn" class="btn btn-secondary admin-only">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </button>
+            <button id="manageTypesBtn" class="btn btn-secondary admin-only">
+                <i class="fas fa-cog"></i> Manage Types
+            </button>
+            <button id="notificationsBtn" class="btn btn-secondary notification-btn admin-only">
                 <i class="fas fa-bell"></i>
                 <span id="notificationCount" class="notification-badge" style="display: none;">0</span>
             </button>
-            <button id="newRequestBtn" class="btn btn-primary">
+            <button id="newRequestBtn" class="btn btn-primary user-only">
                 <i class="fas fa-plus"></i> New Request
             </button>
-            <button id="adminLoginBtn" class="btn btn-secondary">
-                <i class="fas fa-lock"></i> Login
+            <button id="loginBtn" class="btn btn-secondary">
+                <i class="fas fa-sign-in-alt"></i> Login
             </button>
-            <button id="adminLogoutBtn" class="btn btn-danger" style="display: none;">
+            <button id="logoutBtn" class="btn btn-danger" style="display: none;">
                 <i class="fas fa-sign-out-alt"></i> Logout
             </button>
             <span id="userRoleBadge" class="user-badge" style="display: none;"></span>
@@ -468,14 +558,17 @@
                         <input type="text" id="raiserName" class="form-control" required>
                     </div>
                     <div class="form-group">
-                        <label for="requestType"><i class="fas fa-tag"></i> Request Type</label>
-                        <select id="requestType" class="form-control" required>
-                            <option value="">Select a request type</option>
-                        </select>
+                        <label><i class="fas fa-tag"></i> Request Type</label>
+                        <div class="radio-group" id="requestTypeRadio">
+                            <!-- Request types will be loaded here -->
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label for="description"><i class="fas fa-align-left"></i> Description</label>
-                        <textarea id="description" class="form-control" rows="5" required></textarea>
+                        <label><i class="fas fa-align-left"></i> Description</label>
+                        <div id="descriptionOptions" class="description-options">
+                            <!-- Predefined descriptions will be loaded here -->
+                        </div>
+                        <input type="text" id="customDescription" class="form-control" placeholder="Or enter your own description">
                     </div>
                     <div class="text-center" style="margin-top: 2rem;">
                         <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem;">
@@ -486,12 +579,12 @@
             </div>
         </div>
 
-        <!-- Admin Login Modal -->
-        <div id="adminLoginModal" class="modal">
+        <!-- Login Modal -->
+        <div id="loginModal" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2 class="modal-title"><i class="fas fa-user-shield"></i> Admin Login</h2>
-                    <button class="close-btn" id="closeAdminLoginModal">&times;</button>
+                    <h2 class="modal-title"><i class="fas fa-sign-in-alt"></i> Login</h2>
+                    <button class="close-btn" id="closeLoginModal">&times;</button>
                 </div>
                 <div class="form-group">
                     <label for="username"><i class="fas fa-user"></i> Username</label>
@@ -502,7 +595,7 @@
                     <input type="password" id="password" class="form-control" required>
                 </div>
                 <div class="text-center" style="margin-top: 2rem;">
-                    <button onclick="login()" class="btn btn-primary" style="padding: 0.75rem 2rem;">
+                    <button id="loginSubmitBtn" class="btn btn-primary" style="padding: 0.75rem 2rem;">
                         <i class="fas fa-sign-in-alt"></i> Login
                     </button>
                 </div>
@@ -540,38 +633,6 @@
             </div>
         </div>
 
-        <!-- Manage Request Types Modal (Admin Only) -->
-        <div id="manageTypesModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title"><i class="fas fa-cog"></i> Manage Request Types</h2>
-                    <button class="close-btn" id="closeManageTypesModal">&times;</button>
-                </div>
-                <div class="form-group">
-                    <label for="newTypeName"><i class="fas fa-plus"></i> Add New Request Type</label>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <input type="text" id="newTypeName" class="form-control" placeholder="Enter new type name">
-                        <button onclick="addRequestType()" class="btn btn-primary">
-                            <i class="fas fa-plus"></i> Add
-                        </button>
-                    </div>
-                </div>
-                <div class="table-responsive" style="margin-top: 1.5rem;">
-                    <table class="table" id="requestTypesTable">
-                        <thead>
-                            <tr>
-                                <th>Request Type</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Request types will be loaded here -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
         <!-- Request Details Modal -->
         <div id="requestDetailsModal" class="modal">
             <div class="modal-content">
@@ -585,27 +646,157 @@
             </div>
         </div>
 
+        <!-- Dashboard Modal -->
+        <div id="dashboardModal" class="modal">
+            <div class="modal-content" style="max-width: 900px;">
+                <div class="modal-header">
+                    <h2 class="modal-title"><i class="fas fa-tachometer-alt"></i> Admin Dashboard</h2>
+                    <button class="close-btn" id="closeDashboardModal">&times;</button>
+                </div>
+                <div id="dashboardContent" style="padding: 1rem;">
+                    <div class="dashboard-cards">
+                        <div class="dashboard-card">
+                            <h3>Total Requests</h3>
+                            <div class="value" id="totalRequests">0</div>
+                        </div>
+                        <div class="dashboard-card">
+                            <h3>Open Requests</h3>
+                            <div class="value" id="openRequests">0</div>
+                        </div>
+                        <div class="dashboard-card">
+                            <h3>Closed Requests</h3>
+                            <div class="value" id="closedRequests">0</div>
+                        </div>
+                        <div class="dashboard-card">
+                            <h3>Pending for You</h3>
+                            <div class="value" id="pendingRequests">0</div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">
+                            <span><i class="fas fa-chart-pie"></i> Requests by Type</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table" id="requestsByTypeTable">
+                                <thead>
+                                    <tr>
+                                        <th>Request Type</th>
+                                        <th>Count</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Requests by type will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">
+                            <span><i class="fas fa-chart-bar"></i> Requests by Status</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table" id="requestsByStatusTable">
+                                <thead>
+                                    <tr>
+                                        <th>Status</th>
+                                        <th>Count</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Requests by status will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manage Types Modal -->
+        <div id="manageTypesModal" class="modal">
+            <div class="modal-content" style="max-width: 900px;">
+                <div class="modal-header">
+                    <h2 class="modal-title"><i class="fas fa-cog"></i> Manage Request Types & Descriptions</h2>
+                    <button class="close-btn" id="closeManageTypesModal">&times;</button>
+                </div>
+                <div class="manage-types-container">
+                    <div class="manage-section">
+                        <h3>Request Types</h3>
+                        <div class="form-group">
+                            <label>Add New Request Type</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="text" id="newRequestType" class="form-control" placeholder="Enter new type">
+                                <button onclick="addRequestType()" class="btn btn-primary">
+                                    <i class="fas fa-plus"></i> Add
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table" id="requestTypesTable">
+                                <thead>
+                                    <tr>
+                                        <th>Request Type</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Request types will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="manage-section">
+                        <h3>Predefined Descriptions</h3>
+                        <div class="form-group">
+                            <label>Select Request Type</label>
+                            <select id="descRequestType" class="form-control" onchange="loadDescriptions()">
+                                <option value="">Select a type</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Add New Description</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="text" id="newDescription" class="form-control" placeholder="Enter new description">
+                                <button onclick="addDescription()" class="btn btn-primary">
+                                    <i class="fas fa-plus"></i> Add
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table" id="descriptionsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Description</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Descriptions will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Main Content -->
         <div class="card">
             <div class="card-title">
-                <span><i class="fas fa-list"></i> Request Dashboard</span>
+                <span><i class="fas fa-list"></i> My Requests</span>
                 <div class="filters">
                     <button class="filter-btn active" data-status="all">All Requests</button>
                     <button class="filter-btn" data-status="Open">Open</button>
                     <button class="filter-btn" data-status="Closed">Closed</button>
-                    <button id="manageTypesBtn" class="btn btn-secondary admin-only">
-                        <i class="fas fa-cog"></i> Manage Types
-                    </button>
                 </div>
             </div>
             <div class="table-responsive">
                 <table class="table" id="requestsTable">
                     <thead>
                         <tr>
-                            <th>Request #</th>
+                            <th>Request ID</th>
                             <th>Type</th>
                             <th>Description</th>
-                            <th>Requested By</th>
                             <th>Status</th>
                             <th>Created</th>
                             <th>Actions</th>
@@ -629,32 +820,37 @@
         let currentUser = null;
         let currentUserRole = null;
         let requestTypes = [];
+        let predefinedDescriptions = {};
         let notifications = [];
 
         // DOM Elements
         const newRequestBtn = document.getElementById('newRequestBtn');
-        const adminLoginBtn = document.getElementById('adminLoginBtn');
-        const adminLogoutBtn = document.getElementById('adminLogoutBtn');
-        const notificationsBtn = document.getElementById('notificationsBtn');
+        const dashboardBtn = document.getElementById('dashboardBtn');
         const manageTypesBtn = document.getElementById('manageTypesBtn');
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const notificationsBtn = document.getElementById('notificationsBtn');
         const userRoleBadge = document.getElementById('userRoleBadge');
         const notificationCount = document.getElementById('notificationCount');
         const noRequests = document.getElementById('noRequests');
         const noNotifications = document.getElementById('noNotifications');
+        const loginSubmitBtn = document.getElementById('loginSubmitBtn');
 
         // Modals
         const newRequestModal = document.getElementById('newRequestModal');
-        const adminLoginModal = document.getElementById('adminLoginModal');
+        const loginModal = document.getElementById('loginModal');
         const notificationsModal = document.getElementById('notificationsModal');
-        const manageTypesModal = document.getElementById('manageTypesModal');
         const requestDetailsModal = document.getElementById('requestDetailsModal');
+        const dashboardModal = document.getElementById('dashboardModal');
+        const manageTypesModal = document.getElementById('manageTypesModal');
 
         // Close buttons
         const closeNewRequestModal = document.getElementById('closeNewRequestModal');
-        const closeAdminLoginModal = document.getElementById('closeAdminLoginModal');
+        const closeLoginModal = document.getElementById('closeLoginModal');
         const closeNotificationsModal = document.getElementById('closeNotificationsModal');
-        const closeManageTypesModal = document.getElementById('closeManageTypesModal');
         const closeRequestDetailsModal = document.getElementById('closeRequestDetailsModal');
+        const closeDashboardModal = document.getElementById('closeDashboardModal');
+        const closeManageTypesModal = document.getElementById('closeManageTypesModal');
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
@@ -686,15 +882,21 @@
 
         // Update UI for logged in user
         function updateUIForLoggedInUser() {
-            adminLoginBtn.style.display = 'none';
-            adminLogoutBtn.style.display = 'inline-block';
+            loginBtn.style.display = 'none';
+            logoutBtn.style.display = 'inline-block';
             userRoleBadge.style.display = 'inline-block';
             userRoleBadge.textContent = currentUserRole.toUpperCase();
 
-            // Show admin-only elements
-            document.querySelectorAll('.admin-only').forEach(el => {
-                el.style.display = 'inline-block';
-            });
+            // Show role-specific elements
+            if (currentUserRole === 'user') {
+                document.querySelectorAll('.user-only').forEach(el => {
+                    el.style.display = 'inline-block';
+                });
+            } else {
+                document.querySelectorAll('.admin-only').forEach(el => {
+                    el.style.display = 'inline-block';
+                });
+            }
 
             checkNotifications();
             fetchRequests();
@@ -703,19 +905,25 @@
         // Event Listeners
         function setupEventListeners() {
             newRequestBtn.addEventListener('click', () => newRequestModal.classList.add('active'));
-            adminLoginBtn.addEventListener('click', () => adminLoginModal.classList.add('active'));
-            adminLogoutBtn.addEventListener('click', logout);
+            dashboardBtn.addEventListener('click', () => {
+                dashboardModal.classList.add('active');
+                fetchDashboardData();
+            });
+            manageTypesBtn.addEventListener('click', showManageTypesModal);
+            loginBtn.addEventListener('click', () => loginModal.classList.add('active'));
+            logoutBtn.addEventListener('click', logout);
             notificationsBtn.addEventListener('click', () => {
                 notificationsModal.classList.add('active');
                 fetchNotifications();
             });
-            manageTypesBtn.addEventListener('click', () => manageTypesModal.classList.add('active'));
+            loginSubmitBtn.addEventListener('click', login);
 
             closeNewRequestModal.addEventListener('click', () => newRequestModal.classList.remove('active'));
-            closeAdminLoginModal.addEventListener('click', () => adminLoginModal.classList.remove('active'));
+            closeLoginModal.addEventListener('click', () => loginModal.classList.remove('active'));
             closeNotificationsModal.addEventListener('click', () => notificationsModal.classList.remove('active'));
-            closeManageTypesModal.addEventListener('click', () => manageTypesModal.classList.remove('active'));
             closeRequestDetailsModal.addEventListener('click', () => requestDetailsModal.classList.remove('active'));
+            closeDashboardModal.addEventListener('click', () => dashboardModal.classList.remove('active'));
+            closeManageTypesModal.addEventListener('click', () => manageTypesModal.classList.remove('active'));
 
             document.getElementById('requestForm').addEventListener('submit', submitRequest);
 
@@ -731,50 +939,135 @@
             // Close modals when clicking outside
             window.addEventListener('click', (e) => {
                 if (e.target === newRequestModal) newRequestModal.classList.remove('active');
-                if (e.target === adminLoginModal) adminLoginModal.classList.remove('active');
+                if (e.target === loginModal) loginModal.classList.remove('active');
                 if (e.target === notificationsModal) notificationsModal.classList.remove('active');
-                if (e.target === manageTypesModal) manageTypesModal.classList.remove('active');
                 if (e.target === requestDetailsModal) requestDetailsModal.classList.remove('active');
+                if (e.target === dashboardModal) dashboardModal.classList.remove('active');
+                if (e.target === manageTypesModal) manageTypesModal.classList.remove('active');
             });
         }
 
-        // Load request types
+        // Load request types and predefined descriptions
         function loadRequestTypes() {
             fetch('http://localhost:5000/api/request-types')
                 .then(response => response.json())
-                .then(types => {
-                    requestTypes = types;
-                    const select = document.getElementById('requestType');
-                    select.innerHTML = '<option value="">Select a request type</option>';
-                    types.forEach(type => {
-                        const option = document.createElement('option');
-                        option.value = type;
-                        option.textContent = type;
-                        select.appendChild(option);
+                .then(data => {
+                    requestTypes = data.types;
+                    predefinedDescriptions = data.predefined_descriptions;
+
+                    // Populate request type radio buttons
+                    const radioGroup = document.getElementById('requestTypeRadio');
+                    radioGroup.innerHTML = '';
+                    requestTypes.forEach(type => {
+                        const div = document.createElement('div');
+                        div.className = 'radio-option';
+                        div.innerHTML = `
+                            <input type="radio" id="type_${type}" name="requestType" value="${type}">
+                            <label for="type_${type}">${type}</label>
+                        `;
+                        radioGroup.appendChild(div);
                     });
 
-                    // Also populate in manage types modal
-                    const typesTable = document.querySelector('#requestTypesTable tbody');
-                    typesTable.innerHTML = '';
-                    types.forEach(type => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                    <td>${type}</td>
-                    <td>
-                        <button onclick="removeRequestType('${type}')" class="btn btn-danger btn-sm">
-                            <i class="fas fa-trash"></i> Remove
-                        </button>
-                    </td>
-                `;
-                        typesTable.appendChild(row);
+                    // Add event listeners to radio buttons
+                    document.querySelectorAll('input[name="requestType"]').forEach(radio => {
+                        radio.addEventListener('change', function() {
+                            updateDescriptionOptions(this.value);
+                        });
                     });
                 })
                 .catch(error => console.error('Error loading request types:', error));
         }
 
+        // Update description options based on selected request type
+        function updateDescriptionOptions(requestType) {
+            const descriptionOptions = document.getElementById('descriptionOptions');
+            descriptionOptions.innerHTML = '';
+            
+            if (predefinedDescriptions[requestType]) {
+                predefinedDescriptions[requestType].forEach(desc => {
+                    const div = document.createElement('div');
+                    div.className = 'description-option';
+                    div.textContent = desc;
+                    div.addEventListener('click', function() {
+                        document.getElementById('customDescription').value = desc;
+                    });
+                    descriptionOptions.appendChild(div);
+                });
+            }
+        }
+
+        // Show manage types modal
+        function showManageTypesModal() {
+            manageTypesModal.classList.add('active');
+            loadRequestTypesForManagement();
+        }
+
+        // Load request types for management
+        function loadRequestTypesForManagement() {
+            fetch('http://localhost:5000/api/request-types')
+                .then(response => response.json())
+                .then(data => {
+                    // Populate request types table
+                    const typesTable = document.querySelector('#requestTypesTable tbody');
+                    typesTable.innerHTML = '';
+                    data.types.forEach(type => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${type}</td>
+                            <td>
+                                <button onclick="removeRequestType('${type}')" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-trash"></i> Remove
+                                </button>
+                            </td>
+                        `;
+                        typesTable.appendChild(row);
+                    });
+
+                    // Populate description type dropdown
+                    const typeSelect = document.getElementById('descRequestType');
+                    typeSelect.innerHTML = '<option value="">Select a type</option>';
+                    data.types.forEach(type => {
+                        const option = document.createElement('option');
+                        option.value = type;
+                        option.textContent = type;
+                        typeSelect.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Error loading request types:', error));
+        }
+
+        // Load descriptions for selected type
+        function loadDescriptions() {
+            const requestType = document.getElementById('descRequestType').value;
+            if (!requestType) return;
+
+            fetch('http://localhost:5000/api/request-types/descriptions')
+                .then(response => response.json())
+                .then(descriptions => {
+                    const descTable = document.querySelector('#descriptionsTable tbody');
+                    descTable.innerHTML = '';
+                    
+                    if (descriptions[requestType]) {
+                        descriptions[requestType].forEach(desc => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${desc}</td>
+                                <td>
+                                    <button onclick="removeDescription('${requestType}', '${desc}')" class="btn btn-danger btn-sm">
+                                        <i class="fas fa-trash"></i> Remove
+                                    </button>
+                                </td>
+                            `;
+                            descTable.appendChild(row);
+                        });
+                    }
+                })
+                .catch(error => console.error('Error loading descriptions:', error));
+        }
+
         // Add request type
         function addRequestType() {
-            const typeName = document.getElementById('newTypeName').value.trim();
+            const typeName = document.getElementById('newRequestType').value.trim();
             if (!typeName) {
                 showToast('Please enter a type name', 'error');
                 return;
@@ -791,8 +1084,9 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        document.getElementById('newTypeName').value = '';
-                        loadRequestTypes();
+                        document.getElementById('newRequestType').value = '';
+                        loadRequestTypesForManagement();
+                        loadRequestTypes(); // Refresh the types in new request form
                         showToast('Request type added successfully', 'success');
                     }
                 })
@@ -804,7 +1098,7 @@
 
         // Remove request type
         function removeRequestType(typeName) {
-            if (!confirm(`Are you sure you want to remove "${typeName}"?`)) return;
+            if (!confirm(`Are you sure you want to remove "${typeName}"? This will also remove all its descriptions.`)) return;
 
             fetch('http://localhost:5000/api/request-types', {
                 method: 'DELETE',
@@ -817,13 +1111,79 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        loadRequestTypes();
+                        loadRequestTypesForManagement();
+                        loadRequestTypes(); // Refresh the types in new request form
                         showToast('Request type removed successfully', 'success');
                     }
                 })
                 .catch(error => {
                     console.error('Error removing request type:', error);
                     showToast('Failed to remove request type', 'error');
+                });
+        }
+
+        // Add description
+        function addDescription() {
+            const requestType = document.getElementById('descRequestType').value;
+            const description = document.getElementById('newDescription').value.trim();
+            
+            if (!requestType || !description) {
+                showToast('Please select a request type and enter description', 'error');
+                return;
+            }
+
+            fetch('http://localhost:5000/api/request-types/descriptions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({ 
+                    request_type: requestType,
+                    description: description
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('newDescription').value = '';
+                        loadDescriptions();
+                        loadRequestTypes(); // Refresh the descriptions in new request form
+                        showToast('Description added successfully', 'success');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error adding description:', error);
+                    showToast('Failed to add description', 'error');
+                });
+        }
+
+        // Remove description
+        function removeDescription(requestType, description) {
+            if (!confirm(`Are you sure you want to remove this description?`)) return;
+
+            fetch('http://localhost:5000/api/request-types/descriptions', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({ 
+                    request_type: requestType,
+                    description: description
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        loadDescriptions();
+                        loadRequestTypes(); // Refresh the descriptions in new request form
+                        showToast('Description removed successfully', 'success');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error removing description:', error);
+                    showToast('Failed to remove description', 'error');
                 });
         }
 
@@ -853,7 +1213,7 @@
                     if (data.success) {
                         currentUser = username;
                         currentUserRole = data.role;
-                        adminLoginModal.classList.remove('active');
+                        loginModal.classList.remove('active');
                         updateUIForLoggedInUser();
                         showToast('Login successful', 'success');
                     } else {
@@ -877,12 +1237,15 @@
                     if (data.success) {
                         currentUser = null;
                         currentUserRole = null;
-                        adminLoginBtn.style.display = 'inline-block';
-                        adminLogoutBtn.style.display = 'none';
+                        loginBtn.style.display = 'inline-block';
+                        logoutBtn.style.display = 'none';
                         userRoleBadge.style.display = 'none';
 
-                        // Hide admin-only elements
+                        // Hide role-specific elements
                         document.querySelectorAll('.admin-only').forEach(el => {
+                            el.style.display = 'none';
+                        });
+                        document.querySelectorAll('.user-only').forEach(el => {
                             el.style.display = 'none';
                         });
 
@@ -935,27 +1298,15 @@
                 requests.forEach(request => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                <td>#${request.sno}</td>
+                <td>${request.request_id.substring(0, 8)}</td>
                 <td>${request.request_type}</td>
                 <td>${request.description.substring(0, 50)}${request.description.length > 50 ? '...' : ''}</td>
-                <td>${request.raiser_name}</td>
                 <td><span class="badge badge-${request.status.toLowerCase()}">${request.status}</span></td>
                 <td>${new Date(request.created_at).toLocaleString()}</td>
                 <td class="action-buttons">
-                    <button onclick="showRequestDetails(${request.sno})" class="btn btn-secondary btn-sm">
+                    <button onclick="showRequestDetails('${request.request_id}')" class="btn btn-secondary btn-sm">
                         <i class="fas fa-eye"></i> View
                     </button>
-                    ${currentUserRole && request.current_admin === currentUserRole ? `
-                        ${request.current_admin === 'admin1' ? `
-                            <button onclick="showAdminOptions(${request.sno})" class="btn btn-primary btn-sm">
-                                <i class="fas fa-share"></i> Forward
-                            </button>
-                        ` : `
-                            <button onclick="approveRequest(${request.sno})" class="btn btn-success btn-sm">
-                                <i class="fas fa-check"></i> Approve
-                            </button>
-                        `}
-                    ` : ''}
                 </td>
             `;
                     tableBody.appendChild(row);
@@ -964,19 +1315,64 @@
         }
 
         // Show request details
-        function showRequestDetails(sno) {
+        function showRequestDetails(requestId) {
             fetch('http://localhost:5000/api/requests', {
                 credentials: 'include'
             })
                 .then(response => response.json())
                 .then(requests => {
-                    const request = requests.find(r => r.sno === sno);
+                    const request = requests.find(r => r.request_id === requestId);
                     if (request) {
                         const content = document.getElementById('requestDetailsContent');
+                        let buttons = '';
+                        
+                        // Admin1 has full control, others only control their own requests
+                        if (currentUserRole === 'admin1' || currentUserRole === request.current_admin) {
+                            buttons = `
+                                <div class="form-group">
+                                    <label for="updateText">Add Update</label>
+                                    <textarea id="updateText" class="form-control" rows="3"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="statusSelect">Status</label>
+                                    <select id="statusSelect" class="form-control">
+                                        <option value="Open" ${request.status === 'Open' ? 'selected' : ''}>Open</option>
+                                        <option value="Closed" ${request.status === 'Closed' ? 'selected' : ''}>Closed</option>
+                                    </select>
+                                </div>
+                                <button onclick="updateRequestDetails('${request.request_id}')" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Save Changes
+                                </button>
+                            `;
+                            
+                            if ((currentUserRole === 'admin1' || currentUserRole === request.current_admin) && request.status === 'Open') {
+                                buttons += `
+                                    <div style="margin-top: 1rem;">
+                                        <h4>Forward Request</h4>
+                                        <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+                                            ${currentUserRole === 'admin1' ? `
+                                                <button onclick="forwardRequest('${request.request_id}', 'admin2')" class="btn btn-primary">
+                                                    <i class="fas fa-share"></i> To Admin 2
+                                                </button>
+                                                <button onclick="forwardRequest('${request.request_id}', 'admin3')" class="btn btn-primary">
+                                                    <i class="fas fa-share"></i> To Admin 3
+                                                </button>
+                                            ` : ''}
+                                            ${currentUserRole === 'admin2' ? `
+                                                <button onclick="forwardRequest('${request.request_id}', 'admin3')" class="btn btn-primary">
+                                                    <i class="fas fa-share"></i> To Admin 3
+                                                </button>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                        }
+                        
                         content.innerHTML = `
                 <div class="form-group">
-                    <label>Request #</label>
-                    <p>${request.sno}</p>
+                    <label>Request ID</label>
+                    <p>${request.request_id}</p>
                 </div>
                 <div class="form-group">
                     <label>Type</label>
@@ -1010,6 +1406,7 @@
                     <label>Last Updated</label>
                     <p>${new Date(request.last_updated).toLocaleString()}</p>
                 </div>
+                ${buttons}
             `;
                         requestDetailsModal.classList.add('active');
                     }
@@ -1020,28 +1417,44 @@
                 });
         }
 
-        // Show admin options for forwarding
-        function showAdminOptions(sno) {
-            const content = document.getElementById('requestDetailsContent');
-            content.innerHTML = `
-        <div style="text-align: center; padding: 2rem;">
-            <h3 style="margin-bottom: 2rem;">Forward Request #${sno}</h3>
-            <div style="display: flex; gap: 1.5rem; justify-content: center;">
-                <button onclick="forwardRequest(${sno}, 'admin2')" class="btn btn-primary" style="padding: 1rem 2rem;">
-                    <i class="fas fa-user-shield"></i> Admin 2
-                </button>
-                <button onclick="forwardRequest(${sno}, 'admin3')" class="btn btn-primary" style="padding: 1rem 2rem;">
-                    <i class="fas fa-user-shield"></i> Admin 3
-                </button>
-            </div>
-        </div>
-    `;
-            requestDetailsModal.classList.add('active');
+        // Update request details
+        function updateRequestDetails(requestId) {
+            const updateText = document.getElementById('updateText').value;
+            const status = document.getElementById('statusSelect').value;
+            
+            if (!updateText) {
+                showToast('Please enter update text', 'error');
+                return;
+            }
+            
+            fetch(`http://localhost:5000/api/requests/${requestId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    update_text: updateText,
+                    status: status
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('Request updated successfully', 'success');
+                        requestDetailsModal.classList.remove('active');
+                        fetchRequests();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating request:', error);
+                    showToast('Failed to update request', 'error');
+                });
         }
 
         // Forward request to another admin
-        function forwardRequest(sno, nextAdmin) {
-            fetch(`http://localhost:5000/api/requests/${sno}`, {
+        function forwardRequest(requestId, nextAdmin) {
+            fetch(`http://localhost:5000/api/requests/${requestId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1054,7 +1467,7 @@
                     if (data.success) {
                         showToast(`Request forwarded to ${nextAdmin}`, 'success');
                         requestDetailsModal.classList.remove('active');
-                        // User will need to refresh page to see changes
+                        fetchRequests();
                     }
                 })
                 .catch(error => {
@@ -1063,34 +1476,12 @@
                 });
         }
 
-        // Approve request
-        function approveRequest(sno) {
-            fetch(`http://localhost:5000/api/requests/${sno}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include',
-                body: JSON.stringify({ approve: true })
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        showToast('Request approved successfully', 'success');
-                        // User will need to refresh page to see changes
-                    }
-                })
-                .catch(error => {
-                    console.error('Error approving request:', error);
-                    showToast('Failed to approve request', 'error');
-                });
-        }
-
         // Submit new request
         function submitRequest(e) {
             e.preventDefault();
-            const requestType = document.getElementById('requestType').value;
-            const description = document.getElementById('description').value;
+            const selectedType = document.querySelector('input[name="requestType"]:checked');
+            const requestType = selectedType ? selectedType.value : '';
+            const description = document.getElementById('customDescription').value;
             const raiserName = document.getElementById('raiserName').value;
 
             if (!raiserName || !requestType || !description) {
@@ -1106,17 +1497,18 @@
                 credentials: 'include',
                 body: JSON.stringify({
                     request_type: requestType,
-                    description: description,
+                    description: selectedType.value,
+                    custom_description: description,
                     raiser_name: raiserName
                 })
             })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        showToast(`Request #${data.sno} submitted successfully`, 'success');
+                        showToast(`Request submitted successfully (ID: ${data.request_id.substring(0, 8)})`, 'success');
                         document.getElementById('requestForm').reset();
                         newRequestModal.classList.remove('active');
-                        // User will need to refresh page to see the new request
+                        fetchRequests();
                     }
                 })
                 .catch(error => {
@@ -1127,7 +1519,7 @@
 
         // Check notifications
         function checkNotifications() {
-            if (!currentUser) {
+            if (!currentUser || currentUserRole === 'user') {
                 notificationCount.style.display = 'none';
                 return;
             }
@@ -1185,7 +1577,7 @@
                 <td>${notification.description.substring(0, 30)}${notification.description.length > 30 ? '...' : ''}</td>
                 <td><span class="badge badge-${notification.status.toLowerCase()}">${notification.status}</span></td>
                 <td>
-                    <button onclick="showRequestDetails(${notification.sno})" class="btn btn-secondary btn-sm">
+                    <button onclick="showRequestDetails('${notification.request_id}')" class="btn btn-secondary btn-sm">
                         <i class="fas fa-eye"></i> View
                     </button>
                 </td>
@@ -1193,6 +1585,48 @@
                     tableBody.appendChild(row);
                 });
             }
+        }
+
+        // Fetch dashboard data
+        function fetchDashboardData() {
+            fetch('http://localhost:5000/api/dashboard', {
+                credentials: 'include'
+            })
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('totalRequests').textContent = data.total_requests;
+                    document.getElementById('openRequests').textContent = data.open_requests;
+                    document.getElementById('closedRequests').textContent = data.closed_requests;
+                    document.getElementById('pendingRequests').textContent = data.pending_requests;
+
+                    // Update requests by type table
+                    const typeTableBody = document.querySelector('#requestsByTypeTable tbody');
+                    typeTableBody.innerHTML = '';
+                    for (const [type, count] of Object.entries(data.requests_by_type)) {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${type}</td>
+                            <td>${count}</td>
+                        `;
+                        typeTableBody.appendChild(row);
+                    }
+
+                    // Update requests by status table
+                    const statusTableBody = document.querySelector('#requestsByStatusTable tbody');
+                    statusTableBody.innerHTML = '';
+                    for (const [status, count] of Object.entries(data.requests_by_status)) {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${status}</td>
+                            <td>${count}</td>
+                        `;
+                        statusTableBody.appendChild(row);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching dashboard data:', error);
+                    showToast('Failed to load dashboard data', 'error');
+                });
         }
 
         // Show toast notification

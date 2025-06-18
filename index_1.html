@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Travel Claim Automation System - Final</title>
+    <link rel="stylesheet" href="styles-final.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="screen active">
+        <div class="login-container">
+            <div class="company-header">
+                <h1>XYZ</h1>
+                <h2>Travel Claim Automation System</h2>
+            </div>
+            <form class="login-form" id="loginForm">
+                <div class="form-group">
+                    <label for="persNo">Personnel Number:</label>
+                    <input type="text" id="persNo" name="persNo" required placeholder="Enter your personnel number">
+                </div>
+                <button type="submit" class="btn-primary">
+                    <span class="plus-icon">→</span>
+                    Login
+                </button>
+                <div id="loginError" class="error-message"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dashboard Screen -->
+    <div id="dashboardScreen" class="screen">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="company-info">
+                <h1>XYZ</h1>
+                <h2>TRAVEL EXPENSE STATEMENT</h2>
+            </div>
+            <div class="employee-info">
+                <div class="employee-details">
+                    <div class="detail-row">
+                        <span class="label">NAME / EMP No.:</span>
+                        <span class="value" id="employeeName"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">GRADE:</span>
+                        <span class="value" id="employeeGrade"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">DESIGNATION:</span>
+                        <span class="value" id="employeePosition"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">DEPARTMENT:</span>
+                        <span class="value" id="employeeDepartment"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">DATE:</span>
+                        <span class="value" id="currentDate"></span>
+                    </div>
+                </div>
+                <button class="btn-secondary" onclick="logout()">Logout</button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="dashboard-main">
+            <!-- Purpose of Visit Section -->
+            <section class="purpose-section">
+                <div class="purpose-group">
+                    <label for="purposeOfVisit">PLACE & PURPOSE OF VISIT:</label>
+                    <textarea id="purposeOfVisit" placeholder="Enter place and purpose of visit" rows="3"></textarea>
+                </div>
+            </section>
+
+            <!-- Travel Entries Section -->
+            <section class="travel-entries-section">
+                <div class="section-header">
+                    <h3>Travel Expense Entries</h3>
+                    <button class="btn-primary" onclick="addTravelEntry()">
+                        <span class="plus-icon">+</span>
+                        Add Travel Entry
+                    </button>
+                </div>
+                
+                <div class="travel-entries-container">
+                    <table class="expense-table">
+                        <thead>
+                            <tr>
+                                <th rowspan="2">Select</th>
+                                <th rowspan="2">DATE</th>
+                                <th rowspan="2">FROM</th>
+                                <th rowspan="2">TO</th>
+                                <th rowspan="2">MODE/<br>CLASS</th>
+                                <th rowspan="2">FARE<br>(Rs.)</th>
+                                <th rowspan="2">HOTEL BILLS/<br>SUST.EXP<br>(Rs.)</th>
+                                <th rowspan="2">BUSINESS<br>DISC<br>(Rs.)</th>
+                                <th rowspan="2">MISCELLANEOUS /<br>OUT OF POCKET<br>EXPENSES<br>(Rs.)</th>
+                                <th rowspan="2">CONVEYANCE<br>EXPENSES<br>(Rs.)</th>
+                                <th rowspan="2">ADVANCE<br>(Rs.)</th>
+                                <th colspan="2">Tourist Taxi</th>
+                                <th rowspan="2">Total<br>(Rs.)</th>
+                                <th rowspan="2">Actions</th>
+                            </tr>
+                            <tr>
+                                <th>Credit</th>
+                                <th>Company Car</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tebillTableBody">
+                            <!-- Travel entries will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Expense Summary -->
+            <section class="expense-summary">
+                <h4>Expense Summary</h4>
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <span class="label">Total Fare:</span>
+                        <span class="value" id="totalFare">₹0.00</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="label">Total Hotel:</span>
+                        <span class="value" id="totalHotel">₹0.00</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="label">Total Conveyance:</span>
+                        <span class="value" id="totalConveyance">₹0.00</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="label">Total Miscellaneous:</span>
+                        <span class="value" id="totalMisc">₹0.00</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="label">Business Discount:</span>
+                        <span class="value" id="totalBusinessDisc">₹0.00</span>
+                    </div>
+                    <div class="summary-item advance-item">
+                        <span class="label">Total Advance:</span>
+                        <span class="value" id="totalAdvance">₹0.00</span>
+                    </div>
+                    <div class="summary-item grand-total">
+                        <span class="label">Net Claimable:</span>
+                        <span class="value" id="netClaimable">₹0.00</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Action Buttons -->
+            <section class="action-buttons">
+                <button class="btn-primary" onclick="printSelected()">Print Selected</button>
+                <button class="btn-primary" onclick="exportToExcel()">Export to Excel</button>
+                <button class="btn-secondary" onclick="viewAllSheets()">View All Sheets</button>
+            </section>
+        </main>
+    </div>
+
+    <!-- Travel Entry Modal -->
+    <div id="travelModal" class="modal">
+        <div class="modal-content large-modal">
+            <div class="modal-header">
+                <h3 id="travelModalTitle">Add Travel Entry</h3>
+                <span class="close" onclick="hideModal('travelModal')">&times;</span>
+            </div>
+            
+            <!-- Tab Navigation -->
+            <div class="modal-tab-navigation">
+                <button class="modal-tab-btn active" onclick="showModalTab('basic-details')">Basic Details</button>
+                <button class="modal-tab-btn" onclick="showModalTab('hotel-expenses')">Hotel Expenses</button>
+                <button class="modal-tab-btn" onclick="showModalTab('local-conveyance')">Local Conveyance</button>
+            </div>
+
+            <!-- Basic Details Tab -->
+            <div id="basic-details" class="modal-tab-content active">
+                <form id="travelForm" class="modal-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="dateFrom">From Date:</label>
+                            <input type="date" id="dateFrom" name="dateFrom" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="dateTo">To Date:</label>
+                            <input type="date" id="dateTo" name="dateTo" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="fromLocation">From Location:</label>
+                            <input type="text" id="fromLocation" name="fromLocation" required placeholder="e.g., Chennai">
+                        </div>
+                        <div class="form-group">
+                            <label for="toLocation">To Location:</label>
+                            <input type="text" id="toLocation" name="toLocation" required placeholder="e.g., Kolkata">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="modeClass">Mode/Class:</label>
+                            <select id="modeClass" name="modeClass" required>
+                                <option value="">Select Mode</option>
+                                <option value="Train - AC 1st">Train - AC 1st</option>
+                                <option value="Train - AC 2nd">Train - AC 2nd</option>
+                                <option value="Train - AC 3rd">Train - AC 3rd</option>
+                                <option value="Bus - AC">Bus - AC</option>
+                                <option value="Bus - Non-AC">Bus - Non-AC</option>
+                                <option value="Flight - Economy">Flight - Economy</option>
+                                <option value="Flight - Business">Flight - Business</option>
+                                <option value="AIR">AIR</option>
+                                <option value="Car - Own">Car - Own</option>
+                                <option value="Car - Company">Car - Company</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="fare">Fare (Rs.):</label>
+                            <input type="number" id="fare" name="fare" min="0" step="0.01" placeholder="0.00">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="travelAdvance">Advance for this Travel (Rs.):</label>
+                            <input type="number" id="travelAdvance" name="travelAdvance" min="0" step="0.01" placeholder="0.00">
+                            <small>Advance amount specific to this travel entry</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="miscExpenses">Miscellaneous Expenses (Rs.):</label>
+                            <input type="number" id="miscExpenses" name="miscExpenses" min="0" step="0.01" placeholder="0.00">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="businessDisc">Business Discount (Rs.):</label>
+                            <input type="number" id="businessDisc" name="businessDisc" min="0" step="0.01" placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <!-- Empty for spacing -->
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="touristTaxi" name="touristTaxi">
+                                Tourist Taxi on Credit
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="companyCar" name="companyCar">
+                                Company Car Used
+                            </label>
+                        </div>
+                    </div>
+                </form>
+                
+                <div class="calculated-totals">
+                    <h5>Calculated Totals for this Travel</h5>
+                    <div class="total-item">
+                        <span class="label">Hotel Bills Total:</span>
+                        <span class="value" id="calculatedHotelTotal">₹0.00</span>
+                    </div>
+                    <div class="total-item">
+                        <span class="label">Conveyance Total:</span>
+                        <span class="value" id="calculatedConveyanceTotal">₹0.00</span>
+                    </div>
+                    <div class="total-item advance-allocation">
+                        <span class="label">Advance for this Travel:</span>
+                        <span class="value" id="calculatedAdvance">₹0.00</span>
+                    </div>
+                    <div class="total-item net-claim">
+                        <span class="label">Net Claim for this Travel:</span>
+                        <span class="value" id="calculatedNetClaim">₹0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hotel Expenses Tab -->
+            <div id="hotel-expenses" class="modal-tab-content">
+                <div class="nested-section-header">
+                    <h4>Hotel Expenses for this Travel</h4>
+                    <button class="btn-primary" onclick="addHotelExpense()">
+                        <span class="plus-icon">+</span>
+                        Add Hotel Stay
+                    </button>
+                </div>
+                
+                <div class="nested-table-container">
+                    <table class="nested-table">
+                        <thead>
+                            <tr>
+                                <th>Date Range</th>
+                                <th>Particulars</th>
+                                <th>Room Rent (Rs.)</th>
+                                <th>Tax (Rs.)</th>
+                                <th>Total (Rs.)</th>
+                                <th>Eligibility Calculation</th>
+                                <th>Amount Paid by Company</th>
+                                <th>Balance Amount Claimed Rs.</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="nestedHotelTableBody">
+                            <!-- Hotel expenses will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Local Conveyance Tab -->
+            <div id="local-conveyance" class="modal-tab-content">
+                <div class="nested-section-header">
+                    <h4>Local Conveyance for this Travel</h4>
+                    <button class="btn-primary" onclick="addConveyanceEntry()">
+                        <span class="plus-icon">+</span>
+                        Add Conveyance
+                    </button>
+                </div>
+                
+                <div class="nested-table-container">
+                    <table class="nested-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>From</th>
+                                <th>To</th>
+                                <th>Mode of Travel</th>
+                                <th>Amount (Rs.)</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="nestedConveyanceTableBody">
+                            <!-- Conveyance entries will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Modal Actions -->
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="hideModal('travelModal')">Cancel</button>
+                <button class="btn-primary" onclick="saveTravelEntry()">Save Travel Entry</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hotel Sub-Modal -->
+    <div id="hotelSubModal" class="modal sub-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="hotelSubModalTitle">Add Hotel Expense</h3>
+                <span class="close" onclick="hideModal('hotelSubModal')">&times;</span>
+            </div>
+            
+            <div class="modal-tab-content active">
+                <form id="hotelSubForm" class="modal-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="hotelDateFrom">From Date:</label>
+                            <input type="date" id="hotelDateFrom" name="hotelDateFrom" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="hotelDateTo">To Date:</label>
+                            <input type="date" id="hotelDateTo" name="hotelDateTo" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="hotelParticulars">Particulars (Hotel Name/Description):</label>
+                        <input type="text" id="hotelParticulars" name="hotelParticulars" required placeholder="e.g., room rent">
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="roomRentPerDay">Room Rent per Day (Rs.):</label>
+                            <input type="number" id="roomRentPerDay" name="roomRentPerDay" min="0" step="0.01" required placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label for="taxPerDay">Tax per Day (Rs.):</label>
+                            <input type="number" id="taxPerDay" name="taxPerDay" min="0" step="0.01" required placeholder="0.00">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="companyPaidHotel">Amount Paid by Company (Overall):</label>
+                        <input type="number" id="companyPaidHotel" name="companyPaidHotel" min="0" step="0.01" placeholder="0.00">
+                        <small>Total amount paid directly by company for this hotel stay (not per day)</small>
+                    </div>
+                </form>
+                
+                <div class="eligibility-preview">
+                    <div class="calculation-breakdown">
+                        <h5>Eligibility Calculation Preview</h5>
+                        <div class="calc-item">
+                            <span class="label">Days Stayed:</span>
+                            <span class="value" id="daysStayed">0 days</span>
+                        </div>
+                        <div class="calc-item">
+                            <span class="label">Daily Allowance Rate:</span>
+                            <span class="value" id="dailyAllowanceRate">₹0/day</span>
+                        </div>
+                        <div class="calc-item">
+                            <span class="label">Total Room Rent:</span>
+                            <span class="value" id="totalRoomRent">₹0.00</span>
+                        </div>
+                        <div class="calc-item">
+                            <span class="label">Total Tax:</span>
+                            <span class="value" id="totalTax">₹0.00</span>
+                        </div>
+                        <div class="calc-item">
+                            <span class="label">Total Expense:</span>
+                            <span class="value" id="totalExpense">₹0.00</span>
+                        </div>
+                        <div class="calc-item eligibility-calc">
+                            <span class="label">Eligibility Amount:</span>
+                            <span class="value" id="eligibilityAmount">₹0.00</span>
+                        </div>
+                        <div class="calc-item final-claim">
+                            <span class="label">Final Claimable:</span>
+                            <span class="value" id="finalClaimable">₹0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-secondary" id="cancelHotelBtn">Cancel</button>
+                <button class="btn-primary" type="submit" form="hotelSubForm">Save Hotel Expense</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conveyance Sub-Modal -->
+    <div id="conveyanceSubModal" class="modal sub-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="conveyanceSubModalTitle">Add Conveyance Entry</h3>
+                <span class="close" onclick="hideModal('conveyanceSubModal')">&times;</span>
+            </div>
+            
+            <div class="modal-tab-content active">
+                <form id="conveyanceSubForm" class="modal-form">
+                    <div class="form-group">
+                        <label for="conveyanceDate">Date:</label>
+                        <input type="date" id="conveyanceDate" name="conveyanceDate" required>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="conveyanceFrom">From:</label>
+                            <input type="text" id="conveyanceFrom" name="conveyanceFrom" required placeholder="e.g., indra gnadi statue">
+                        </div>
+                        <div class="form-group">
+                            <label for="conveyanceTo">To:</label>
+                            <input type="text" id="conveyanceTo" name="conveyanceTo" required placeholder="e.g., plant">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="modeOfTravel">Mode of Travel:</label>
+                            <select id="modeOfTravel" name="modeOfTravel" required>
+                                <option value="">Select Mode</option>
+                                <option value="auto">Auto</option>
+                                <option value="taxi">Taxi</option>
+                                <option value="bus">Bus</option>
+                                <option value="metro">Metro</option>
+                                <option value="rapido">Rapido</option>
+                                <option value="ola">Ola</option>
+                                <option value="uber">Uber</option>
+                                <option value="own vehicle">Own Vehicle</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="conveyanceAmount">Amount (Rs.):</label>
+                            <input type="number" id="conveyanceAmount" name="conveyanceAmount" min="0" step="0.01" required placeholder="0.00">
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-secondary" id="cancelConveyanceBtn">Cancel</button>
+                <button class="btn-primary" type="submit" form="conveyanceSubForm">Save Conveyance Entry</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- All Sheets Preview Modal -->
+    <div id="allSheetsModal" class="modal">
+        <div class="modal-content large-modal">
+            <div class="modal-header">
+                <h3>All Sheets Preview</h3>
+                <span class="close" onclick="hideModal('allSheetsModal')">&times;</span>
+            </div>
+            
+            <div class="modal-tab-navigation">
+                <button class="modal-tab-btn active" onclick="showModalTab('tebill-preview')">TEBILL</button>
+                <button class="modal-tab-btn" onclick="showModalTab('hotel-preview')">Hotel Expenses</button>
+                <button class="modal-tab-btn" onclick="showModalTab('conveyance-preview')">Local Conveyance</button>
+            </div>
+
+            <div id="tebill-preview" class="modal-tab-content active">
+                <div class="sheet-preview" id="tebillPreviewContent">
+                    <!-- TEBILL preview will be populated here -->
+                </div>
+            </div>
+
+            <div id="hotel-preview" class="modal-tab-content">
+                <div class="sheet-preview" id="hotelPreviewContent">
+                    <!-- Hotel Expenses preview will be populated here -->
+                </div>
+            </div>
+
+            <div id="conveyance-preview" class="modal-tab-content">
+                <div class="sheet-preview" id="conveyancePreviewContent">
+                    <!-- Local Conveyance preview will be populated here -->
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-secondary" id="closeAllSheetsBtn">Close</button>
+                <button class="btn-primary" id="printAllSheetsBtn">Print All Sheets</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script-final.js"></script>
+</body>
+</html>
+

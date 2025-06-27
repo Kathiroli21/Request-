@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Audit Section Allocation</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.min.js"></script>
     <style>
         .calendar-table {
             width: 100%;
@@ -34,9 +32,10 @@
             overflow: hidden;
             text-overflow: ellipsis;
             box-sizing: border-box;
-            position: relative;
+            position: absolute;
             transition: height 0.3s ease;
             width: 100%;
+            border: 1px solid #b6d4fe;
         }
         .allocation-block:hover {
             background-color: #cfe2ff;
@@ -56,6 +55,7 @@
             background-color: #e9ecef;
             color: #6c757d;
             cursor: not-allowed;
+            border-color: #dee2e6;
         }
         .current-allocation {
             border-left: 3px solid #0d6efd;
@@ -69,6 +69,10 @@
             z-index: 100;
             border-radius: 5px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            width: 250px;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
         }
         .allocation-block:hover .allocation-details {
             display: block;
@@ -86,12 +90,24 @@
         .unavailable {
             background-color: #dc3545;
         }
+        .allocations-container {
+            height: 100%;
+            position: relative;
+            width: 100%;
+        }
+        .no-allocations {
+            color: #6c757d;
+            font-style: italic;
+            font-size: 0.8rem;
+            text-align: center;
+            padding: 5px;
+        }
     </style>
 </head>
 <body>
     <div class="container py-4">
-        <h1 class="mb-4">Audit Section Allocation</h1>
-        
+        <h2 class="mb-4">Audit Section Allocation</h2>
+
         <div class="row mb-4">
             <div class="col-md-6">
                 <div class="form-container">
@@ -105,7 +121,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="row mb-4">
             <div class="col-md-12">
                 <div class="form-container">
@@ -128,7 +144,7 @@
                             </div>
                             <div class="col-md-3">
                                 <label for="allocationDays" class="form-label">Days Required</label>
-                                <input type="number" class="form-control" id="allocationDays" min="1">
+                                <input type="number" class="form-control" id="allocationDays" min="1" value="5">
                             </div>
                             <div class="col-md-3">
                                 <label for="fromDate" class="form-label">From Date</label>
@@ -152,7 +168,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="table-responsive">
             <table class="table table-bordered calendar-table" id="allocationTable">
                 <thead>
@@ -227,9 +243,10 @@
             let members = [];
             let allocations = [];
             let currentFinancialYear = '';
+            
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            
+
             // Initialize financial year dropdown
             function initFinancialYears() {
                 const currentYear = new Date().getFullYear();
@@ -250,7 +267,7 @@
                     financialYearSelect.appendChild(option);
                 }
             }
-            
+
             // Load members from backend
             async function loadMembers() {
                 try {
@@ -270,7 +287,7 @@
                     alert('Failed to load members');
                 }
             }
-            
+
             // Load allocations for selected financial year
             async function loadAllocations() {
                 try {
@@ -282,7 +299,7 @@
                     alert('Failed to load allocations');
                 }
             }
-            
+
             // Render calendar table with allocations
             function renderCalendar() {
                 // Clear previous content
@@ -309,8 +326,7 @@
                 months.forEach(monthDate => {
                     const th = document.createElement('th');
                     th.className = 'month-header';
-                    th.textContent = monthDate.toLocaleString('default', { month: 'short' }) + ' ' + 
-                                    monthDate.getFullYear().toString().slice(-2);
+                    th.textContent = monthDate.toLocaleString('default', { month: 'short' }) + ' ' + monthDate.getFullYear().toString().slice(-2);
                     headerRow.appendChild(th);
                 });
                 
@@ -333,60 +349,86 @@
                             !(new Date(alloc.toDate) < monthStart || new Date(alloc.fromDate) > monthEnd)
                         );
                         
-                        // Add allocation blocks to cell
-                        memberAllocations.forEach(alloc => {
-                            const allocStart = new Date(alloc.fromDate);
-                            const allocEnd = new Date(alloc.toDate);
-                            
-                            // Calculate the visible portion of the allocation in this month
-                            const visibleStart = allocStart < monthStart ? monthStart : allocStart;
-                            const visibleEnd = allocEnd > monthEnd ? monthEnd : allocEnd;
-                            
-                            // Calculate percentage of month covered
-                            const monthDays = monthEnd.getDate();
-                            const allocDays = (visibleEnd - visibleStart) / (1000 * 60 * 60 * 24) + 1;
-                            const percentage = Math.min(100, Math.round((allocDays / monthDays) * 100));
-                            
-                            const allocBlock = document.createElement('div');
-                            allocBlock.className = 'allocation-block';
-                            allocBlock.textContent = alloc.description.substring(0, 15) + (alloc.description.length > 15 ? '...' : '');
-                            
-                            // Create details tooltip
-                            const details = document.createElement('div');
-                            details.className = 'allocation-details';
-                            details.innerHTML = `
-                                <strong>${alloc.section}</strong><br>
-                                ${alloc.description}<br>
-                                ${alloc.fromDate} to ${alloc.toDate}<br>
-                                ${allocDays} day(s) in this month
-                            `;
-                            allocBlock.appendChild(details);
-                            
-                            // Set height based on percentage of month covered
-                            allocBlock.style.height = `${percentage}%`;
-                            allocBlock.style.minHeight = '20px'; // Minimum height for visibility
-                            
-                            // Check allocation status
-                            if (new Date(alloc.toDate) < today) {
-                                allocBlock.classList.add('past-allocation');
-                            } else if (new Date(alloc.fromDate) <= today && new Date(alloc.toDate) >= today) {
-                                allocBlock.classList.add('current-allocation');
-                            }
-                            
-                            cell.appendChild(allocBlock);
-                        });
+                        // Create a container for allocation blocks
+                        const allocationsContainer = document.createElement('div');
+                        allocationsContainer.className = 'allocations-container';
                         
+                        if (memberAllocations.length === 0) {
+                            const noAlloc = document.createElement('div');
+                            noAlloc.className = 'no-allocations';
+                            noAlloc.textContent = 'No allocations';
+                            allocationsContainer.appendChild(noAlloc);
+                        } else {
+                            // Add allocation blocks to container
+                            memberAllocations.forEach(alloc => {
+                                const allocStart = new Date(alloc.fromDate);
+                                const allocEnd = new Date(alloc.toDate);
+                                
+                                // Calculate the visible portion of the allocation in this month
+                                const visibleStart = allocStart < monthStart ? monthStart : allocStart;
+                                const visibleEnd = allocEnd > monthEnd ? monthEnd : allocEnd;
+                                
+                                // Calculate percentage of month covered
+                                const monthDays = monthEnd.getDate();
+                                const allocDays = (visibleEnd - visibleStart) / (1000 * 60 * 60 * 24) + 1;
+                                const percentage = Math.min(100, Math.round((allocDays / monthDays) * 100));
+                                
+                                // Calculate position based on start day
+                                const startDay = visibleStart.getDate();
+                                const startPosition = ((startDay - 1) / monthDays) * 100;
+                                
+                                const allocBlock = document.createElement('div');
+                                allocBlock.className = 'allocation-block';
+                                allocBlock.textContent = alloc.description.substring(0, 15) + (alloc.description.length > 15 ? '...' : '');
+                                
+                                // Create details tooltip
+                                const details = document.createElement('div');
+                                details.className = 'allocation-details';
+                                details.innerHTML = `
+                                    <strong>${alloc.section}</strong><br>
+                                    ${alloc.description}<br>
+                                    ${alloc.fromDate} to ${alloc.toDate}<br>
+                                    ${allocDays} day(s) in this month
+                                `;
+                                allocBlock.appendChild(details);
+                                
+                                // Set position and size based on date range
+                                allocBlock.style.position = 'absolute';
+                                allocBlock.style.top = `${startPosition}%`;
+                                allocBlock.style.height = `${percentage}%`;
+                                allocBlock.style.width = 'calc(100% - 4px)';
+                                allocBlock.style.boxSizing = 'border-box';
+                                
+                                // Check allocation status
+                                if (new Date(alloc.toDate) < today) {
+                                    allocBlock.classList.add('past-allocation');
+                                } else if (new Date(alloc.fromDate) <= today && new Date(alloc.toDate) >= today) {
+                                    allocBlock.classList.add('current-allocation');
+                                }
+                                
+                                // Add click handler for editing
+                                allocBlock.addEventListener('click', (e) => {
+                                    e.stopPropagation();
+                                    openEditModal(alloc);
+                                });
+                                
+                                allocationsContainer.appendChild(allocBlock);
+                            });
+                        }
+                        
+                        cell.appendChild(allocationsContainer);
                         row.appendChild(cell);
                     });
                     
                     tableBody.appendChild(row);
                 });
             }
-            
+
             // Check member availability for selected dates
             async function checkAvailability() {
                 const fromDate = document.getElementById('fromDate').value;
                 const toDate = document.getElementById('toDate').value;
+                const memberId = document.getElementById('memberSelect').value;
                 
                 if (!fromDate || !toDate) {
                     alert('Please select both from and to dates');
@@ -419,11 +461,21 @@
                         
                         option.appendChild(indicator);
                         option.appendChild(document.createTextNode(member.name));
-                        if (!isAvailable) {
+                        
+                        if (memberId && member.id == memberId && !isAvailable) {
                             option.disabled = true;
                         }
+                        
                         memberSelect.appendChild(option);
                     });
+                    
+                    // Preserve the selected member if they're available
+                    if (memberId) {
+                        const selectedOption = memberSelect.querySelector(`option[value="${memberId}"]`);
+                        if (selectedOption && !selectedOption.disabled) {
+                            selectedOption.selected = true;
+                        }
+                    }
                     
                     alert(`${availableMembers.length} members available for selected dates`);
                 } catch (error) {
@@ -431,7 +483,7 @@
                     alert('Failed to check availability');
                 }
             }
-            
+
             // Suggest available dates based on required days
             async function suggestDates() {
                 const daysRequired = parseInt(document.getElementById('allocationDays').value) || 5;
@@ -469,7 +521,7 @@
                     alert('Failed to suggest dates');
                 }
             }
-            
+
             // Submit new allocation
             async function submitAllocation(event) {
                 event.preventDefault();
@@ -507,6 +559,14 @@
                     } else {
                         alert('Allocation created successfully');
                         allocationForm.reset();
+                        
+                        // Reset dates to defaults
+                        const defaultFromDate = today.toISOString().split('T')[0];
+                        const defaultToDate = new Date(today);
+                        defaultToDate.setDate(today.getDate() + 7);
+                        document.getElementById('fromDate').value = defaultFromDate;
+                        document.getElementById('toDate').value = defaultToDate.toISOString().split('T')[0];
+                        
                         loadAllocations();
                     }
                 } catch (error) {
@@ -514,7 +574,7 @@
                     alert('Failed to create allocation');
                 }
             }
-            
+
             // Open edit modal with allocation data
             function openEditModal(allocation) {
                 const fromDate = new Date(allocation.fromDate);
@@ -559,7 +619,7 @@
                 
                 editModal.show();
             }
-            
+
             // Save edited allocation
             async function saveEdit() {
                 const id = document.getElementById('editId').value;
@@ -601,7 +661,7 @@
                     alert('Failed to update allocation');
                 }
             }
-            
+
             // Delete allocation
             async function deleteAllocation(id) {
                 try {
@@ -623,7 +683,7 @@
                     alert('Failed to delete allocation');
                 }
             }
-            
+
             // Event listeners
             loadDataBtn.addEventListener('click', () => {
                 currentFinancialYear = financialYearSelect.value;

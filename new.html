@@ -18,10 +18,11 @@
             vertical-align: middle;
         }
         .calendar-table td {
-            height: 80px;
+            height: 100px;
             vertical-align: top;
             border: 1px solid #dee2e6;
             padding: 2px;
+            position: relative;
         }
         .allocation-block {
             font-size: 0.8rem;
@@ -32,13 +33,16 @@
             cursor: pointer;
             overflow: hidden;
             text-overflow: ellipsis;
+            box-sizing: border-box;
+            position: relative;
+            transition: height 0.3s ease;
+            width: 100%;
         }
         .allocation-block:hover {
             background-color: #cfe2ff;
+            z-index: 10;
         }
         .month-header {
-            writing-mode: vertical-rl;
-            transform: rotate(180deg);
             text-align: center;
             white-space: nowrap;
         }
@@ -51,6 +55,36 @@
         .past-allocation {
             background-color: #e9ecef;
             color: #6c757d;
+            cursor: not-allowed;
+        }
+        .current-allocation {
+            border-left: 3px solid #0d6efd;
+        }
+        .allocation-details {
+            display: none;
+            position: absolute;
+            background: white;
+            border: 1px solid #ddd;
+            padding: 10px;
+            z-index: 100;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .allocation-block:hover .allocation-details {
+            display: block;
+        }
+        .availability-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .available {
+            background-color: #198754;
+        }
+        .unavailable {
+            background-color: #dc3545;
         }
     </style>
 </head>
@@ -78,19 +112,23 @@
                     <h4>New Allocation</h4>
                     <form id="allocationForm">
                         <div class="row g-3">
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label for="memberSelect" class="form-label">Member</label>
                                 <select class="form-select" id="memberSelect" required>
                                     <option value="">Select Member</option>
                                 </select>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label for="section" class="form-label">Section</label>
                                 <input type="text" class="form-control" id="section" required>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label for="description" class="form-label">Description</label>
                                 <input type="text" class="form-control" id="description" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="allocationDays" class="form-label">Days Required</label>
+                                <input type="number" class="form-control" id="allocationDays" min="1">
                             </div>
                             <div class="col-md-3">
                                 <label for="fromDate" class="form-label">From Date</label>
@@ -102,6 +140,9 @@
                             </div>
                             <div class="col-md-2 d-flex align-items-end">
                                 <button type="button" class="btn btn-primary" id="checkAvailability">Check Availability</button>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="button" class="btn btn-info" id="suggestDates">Suggest Dates</button>
                             </div>
                             <div class="col-md-2 d-flex align-items-end">
                                 <button type="submit" class="btn btn-success">Save Allocation</button>
@@ -159,6 +200,7 @@
                     </form>
                 </div>
                 <div class="modal-footer">
+                    <button type="button" class="btn btn-danger me-auto" id="deleteAllocation">Delete</button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     <button type="button" class="btn btn-primary" id="saveEdit">Save changes</button>
                 </div>
@@ -174,15 +216,19 @@
             const memberSelect = document.getElementById('memberSelect');
             const allocationForm = document.getElementById('allocationForm');
             const checkAvailabilityBtn = document.getElementById('checkAvailability');
+            const suggestDatesBtn = document.getElementById('suggestDates');
             const allocationTable = document.getElementById('allocationTable');
             const tableBody = document.getElementById('tableBody');
             const editModal = new bootstrap.Modal(document.getElementById('editModal'));
             const editForm = document.getElementById('editForm');
             const saveEditBtn = document.getElementById('saveEdit');
+            const deleteAllocationBtn = document.getElementById('deleteAllocation');
             
             let members = [];
             let allocations = [];
             let currentFinancialYear = '';
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
             
             // Initialize financial year dropdown
             function initFinancialYears() {
@@ -237,7 +283,7 @@
                 }
             }
             
-            // Render calendar table
+            // Render calendar table with allocations
             function renderCalendar() {
                 // Clear previous content
                 tableBody.innerHTML = '';
@@ -262,7 +308,9 @@
                 // Add month headers
                 months.forEach(monthDate => {
                     const th = document.createElement('th');
-                    th.textContent = monthDate.toLocaleString('default', { month: 'short' });
+                    th.className = 'month-header';
+                    th.textContent = monthDate.toLocaleString('default', { month: 'short' }) + ' ' + 
+                                    monthDate.getFullYear().toString().slice(-2);
                     headerRow.appendChild(th);
                 });
                 
@@ -287,19 +335,42 @@
                         
                         // Add allocation blocks to cell
                         memberAllocations.forEach(alloc => {
+                            const allocStart = new Date(alloc.fromDate);
+                            const allocEnd = new Date(alloc.toDate);
+                            
+                            // Calculate the visible portion of the allocation in this month
+                            const visibleStart = allocStart < monthStart ? monthStart : allocStart;
+                            const visibleEnd = allocEnd > monthEnd ? monthEnd : allocEnd;
+                            
+                            // Calculate percentage of month covered
+                            const monthDays = monthEnd.getDate();
+                            const allocDays = (visibleEnd - visibleStart) / (1000 * 60 * 60 * 24) + 1;
+                            const percentage = Math.min(100, Math.round((allocDays / monthDays) * 100));
+                            
                             const allocBlock = document.createElement('div');
                             allocBlock.className = 'allocation-block';
-                            allocBlock.textContent = alloc.description;
-                            allocBlock.title = `${alloc.section}\n${alloc.fromDate} to ${alloc.toDate}`;
+                            allocBlock.textContent = alloc.description.substring(0, 15) + (alloc.description.length > 15 ? '...' : '');
                             
-                            // Check if allocation is in the past
-                            const today = new Date();
-                            today.setHours(0, 0, 0, 0);
+                            // Create details tooltip
+                            const details = document.createElement('div');
+                            details.className = 'allocation-details';
+                            details.innerHTML = `
+                                <strong>${alloc.section}</strong><br>
+                                ${alloc.description}<br>
+                                ${alloc.fromDate} to ${alloc.toDate}<br>
+                                ${allocDays} day(s) in this month
+                            `;
+                            allocBlock.appendChild(details);
+                            
+                            // Set height based on percentage of month covered
+                            allocBlock.style.height = `${percentage}%`;
+                            allocBlock.style.minHeight = '20px'; // Minimum height for visibility
+                            
+                            // Check allocation status
                             if (new Date(alloc.toDate) < today) {
                                 allocBlock.classList.add('past-allocation');
-                            } else {
-                                // Add click event for editing current/future allocations
-                                allocBlock.addEventListener('click', () => openEditModal(alloc));
+                            } else if (new Date(alloc.fromDate) <= today && new Date(alloc.toDate) >= today) {
+                                allocBlock.classList.add('current-allocation');
                             }
                             
                             cell.appendChild(allocBlock);
@@ -336,12 +407,21 @@
                     
                     const availableMembers = await response.json();
                     
-                    // Update member dropdown with only available members
+                    // Update member dropdown with availability indicators
                     memberSelect.innerHTML = '<option value="">Select Member</option>';
-                    availableMembers.forEach(member => {
+                    members.forEach(member => {
                         const option = document.createElement('option');
                         option.value = member.id;
-                        option.textContent = member.name;
+                        
+                        const isAvailable = availableMembers.some(m => m.id === member.id);
+                        const indicator = document.createElement('span');
+                        indicator.className = `availability-indicator ${isAvailable ? 'available' : 'unavailable'}`;
+                        
+                        option.appendChild(indicator);
+                        option.appendChild(document.createTextNode(member.name));
+                        if (!isAvailable) {
+                            option.disabled = true;
+                        }
                         memberSelect.appendChild(option);
                     });
                     
@@ -349,6 +429,44 @@
                 } catch (error) {
                     console.error('Error checking availability:', error);
                     alert('Failed to check availability');
+                }
+            }
+            
+            // Suggest available dates based on required days
+            async function suggestDates() {
+                const daysRequired = parseInt(document.getElementById('allocationDays').value) || 5;
+                const memberId = memberSelect.value;
+                
+                if (!memberId) {
+                    alert('Please select a member first');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('/api/suggest-dates', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            memberId: memberId,
+                            daysRequired: daysRequired
+                        })
+                    });
+                    
+                    const suggestions = await response.json();
+                    
+                    if (suggestions.length > 0) {
+                        const firstSuggestion = suggestions[0];
+                        document.getElementById('fromDate').value = firstSuggestion.startDate;
+                        document.getElementById('toDate').value = firstSuggestion.endDate;
+                        alert(`Suggested dates: ${firstSuggestion.startDate} to ${firstSuggestion.endDate}`);
+                    } else {
+                        alert('No available date ranges found for this member');
+                    }
+                } catch (error) {
+                    console.error('Error suggesting dates:', error);
+                    alert('Failed to suggest dates');
                 }
             }
             
@@ -399,12 +517,11 @@
             
             // Open edit modal with allocation data
             function openEditModal(allocation) {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
                 const fromDate = new Date(allocation.fromDate);
+                const toDate = new Date(allocation.toDate);
                 
-                // Check if allocation is in the past
-                if (fromDate < today) {
+                // Check if allocation is completely in the past
+                if (toDate < today) {
                     alert('Cannot edit past allocations');
                     return;
                 }
@@ -414,6 +531,31 @@
                 document.getElementById('editSection').value = allocation.section;
                 document.getElementById('editFromDate').value = allocation.fromDate;
                 document.getElementById('editToDate').value = allocation.toDate;
+                
+                // Set minimum dates for the date inputs
+                const editFromDate = document.getElementById('editFromDate');
+                const editToDate = document.getElementById('editToDate');
+                
+                // If allocation is currently active, don't allow changing start date to before today
+                if (fromDate <= today && toDate >= today) {
+                    editFromDate.min = today.toISOString().split('T')[0];
+                    editFromDate.max = allocation.fromDate; // Can't move start date forward
+                } else if (fromDate > today) {
+                    // Future allocation - can edit both dates but must maintain from <= to
+                    editFromDate.min = today.toISOString().split('T')[0];
+                }
+                
+                // Always ensure to date is >= from date
+                editFromDate.addEventListener('change', function() {
+                    editToDate.min = this.value;
+                });
+                
+                // Set up delete button
+                deleteAllocationBtn.onclick = function() {
+                    if (confirm('Are you sure you want to delete this allocation?')) {
+                        deleteAllocation(allocation.id);
+                    }
+                };
                 
                 editModal.show();
             }
@@ -460,6 +602,28 @@
                 }
             }
             
+            // Delete allocation
+            async function deleteAllocation(id) {
+                try {
+                    const response = await fetch(`/api/allocations/${id}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.error) {
+                        alert(result.error);
+                    } else {
+                        alert('Allocation deleted successfully');
+                        editModal.hide();
+                        loadAllocations();
+                    }
+                } catch (error) {
+                    console.error('Error deleting allocation:', error);
+                    alert('Failed to delete allocation');
+                }
+            }
+            
             // Event listeners
             loadDataBtn.addEventListener('click', () => {
                 currentFinancialYear = financialYearSelect.value;
@@ -467,6 +631,7 @@
             });
             
             checkAvailabilityBtn.addEventListener('click', checkAvailability);
+            suggestDatesBtn.addEventListener('click', suggestDates);
             allocationForm.addEventListener('submit', submitAllocation);
             saveEditBtn.addEventListener('click', saveEdit);
             
@@ -474,6 +639,13 @@
             initFinancialYears();
             loadMembers();
             loadAllocations();
+            
+            // Set default dates (today and +7 days)
+            const defaultFromDate = today.toISOString().split('T')[0];
+            const defaultToDate = new Date(today);
+            defaultToDate.setDate(today.getDate() + 7);
+            document.getElementById('fromDate').value = defaultFromDate;
+            document.getElementById('toDate').value = defaultToDate.toISOString().split('T')[0];
         });
     </script>
 </body>

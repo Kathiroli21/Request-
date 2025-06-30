@@ -319,11 +319,15 @@ def delete_allocation(alloc_id):
     return jsonify({"success": True})
 
 
+ 
+
+
+
 from flask import send_file
 from fpdf import FPDF
 import io
 
-MANAGER_FILE = 'managers.txt'  # Must contain one manager name per line
+MANAGER_FILE = 'managers.txt'  # Each line = one manager
 
 class PDF(FPDF):
     def header(self):
@@ -372,33 +376,41 @@ def classify_unit(description):
 
 @app.route('/generate-pdf', methods=['GET'])
 def generate_pdf():
+    financial_year = request.args.get('financialYear')
+    if not financial_year:
+        return jsonify({"error": "Missing financial year"}), 400
+
     wb = load_workbook(DB_FILE)
     ws = wb["Allocations"]
 
-    # Load manager names
     if not os.path.exists(MANAGER_FILE):
         return jsonify({"error": "Manager file not found"}), 404
+
     with open(MANAGER_FILE, 'r') as f:
         managers = [line.strip() for line in f if line.strip()]
 
-    # Read all allocations
     data = []
     for row in ws.iter_rows(min_row=2, values_only=True):
+        row_fy = row[6] if isinstance(row[6], str) else get_financial_year(row[4])
+        if row_fy != financial_year:
+            continue
+
         description = row[2]
-        audit_mgr = row[3]
-        auditors = row[2] if len(row) > 4 else ""  # fallback
-        remarks = row[6] if len(row) > 6 else ""
         unit_type = classify_unit(description)
+        audit_mgr = row[3]
         filtered_auditors = ', '.join([
             name.strip() for name in row[2].split(',') if name.strip() not in managers
         ])
+        remarks = row[6] if len(row) > 6 else ""
         data.append({
             "unit": unit_type,
             "manager": audit_mgr,
             "row": list(row) + [filtered_auditors, remarks]
         })
 
-    # Group by unit then manager
+    if not data:
+        return jsonify({"error": "No data found for selected financial year"}), 404
+
     pdf = PDF()
     pdf.add_page()
 
@@ -408,6 +420,7 @@ def generate_pdf():
         unit_data = [d for d in data if d["unit"] == unit_type]
         managers_seen = set()
 
+        index = 1
         for entry in unit_data:
             manager = entry["manager"]
             if manager not in managers_seen:
@@ -415,17 +428,21 @@ def generate_pdf():
                 pdf.cell(0, 8, f"Manager: {manager}", ln=1)
                 pdf.table_header()
                 managers_seen.add(manager)
+                index = 1
 
-            index = 1
             pdf.table_row(index, entry["row"])
             index += 1
 
-    # Save to memory buffer
-    pdf_buffer = io.BytesIO()
-    pdf.output(pdf_buffer)
-    pdf_buffer.seek(0)
+    buffer = io.BytesIO()
+    pdf.output(buffer)
+    buffer.seek(0)
 
-    return send_file(pdf_buffer, as_attachment=True, download_name="audit_programme.pdf", mimetype='application/pdf')
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=f"audit_programme_{financial_year}.pdf",
+        mimetype='application/pdf'
+    )
 
 if __name__ == '__main__':
     app.run(debug=True)

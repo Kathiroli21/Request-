@@ -318,5 +318,114 @@ def delete_allocation(alloc_id):
     wb.save(DB_FILE)  
     return jsonify({"success": True})
 
+
+from flask import send_file
+from fpdf import FPDF
+import io
+
+MANAGER_FILE = 'managers.txt'  # Must contain one manager name per line
+
+class PDF(FPDF):
+    def header(self):
+        self.image('static/logo.png', 10, 8, 20)
+        self.set_font('Arial', 'B', 12)
+        self.cell(0, 10, 'INTER OFFICE MEMORANDUM', border=0, ln=1, align='C')
+        self.set_font('Arial', '', 10)
+        self.cell(0, 8, "From: IAD", ln=1)
+        self.cell(0, 8, "To: CS", ln=1)
+        self.cell(0, 8, "Ref: __/2025-26/IAD", ln=1)
+        self.cell(0, 8, "Date: 27.06.2025", ln=1)
+        self.ln(5)
+
+    def table_header(self):
+        headers = ['Sl No', 'Audit Ref No', 'UNIT/MODULE', 'AUDITORS', 'AUDIT MGR', 'From', 'To', 'Remarks']
+        widths = [10, 20, 50, 30, 25, 20, 20, 35]
+        self.set_font('Arial', 'B', 9)
+        for header, width in zip(headers, widths):
+            self.cell(width, 8, header, border=1)
+        self.ln()
+
+    def table_row(self, index, row):
+        values = [
+            str(index),
+            str(row[0]),  # AllocationID
+            row[2],       # Description
+            row[-2],      # Filtered Auditors
+            row[3],       # Audit Manager
+            row[4],       # FromDate
+            row[5],       # ToDate
+            row[6] if len(row) > 6 else ""  # Remarks
+        ]
+        widths = [10, 20, 50, 30, 25, 20, 20, 35]
+        self.set_font('Arial', '', 8)
+        for val, width in zip(values, widths):
+            self.cell(width, 8, val, border=1)
+        self.ln()
+
+def classify_unit(description):
+    description = description.lower()
+    if description.startswith('ho-'):
+        return 'HO Units'
+    elif description.startswith('sof-'):
+        return 'SOF Units'
+    return 'Plant Units'
+
+@app.route('/generate-pdf', methods=['GET'])
+def generate_pdf():
+    wb = load_workbook(DB_FILE)
+    ws = wb["Allocations"]
+
+    # Load manager names
+    if not os.path.exists(MANAGER_FILE):
+        return jsonify({"error": "Manager file not found"}), 404
+    with open(MANAGER_FILE, 'r') as f:
+        managers = [line.strip() for line in f if line.strip()]
+
+    # Read all allocations
+    data = []
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        description = row[2]
+        audit_mgr = row[3]
+        auditors = row[2] if len(row) > 4 else ""  # fallback
+        remarks = row[6] if len(row) > 6 else ""
+        unit_type = classify_unit(description)
+        filtered_auditors = ', '.join([
+            name.strip() for name in row[2].split(',') if name.strip() not in managers
+        ])
+        data.append({
+            "unit": unit_type,
+            "manager": audit_mgr,
+            "row": list(row) + [filtered_auditors, remarks]
+        })
+
+    # Group by unit then manager
+    pdf = PDF()
+    pdf.add_page()
+
+    for unit_type in ["HO Units", "SOF Units", "Plant Units"]:
+        pdf.set_font('Arial', 'B', 11)
+        pdf.cell(0, 10, unit_type, ln=1)
+        unit_data = [d for d in data if d["unit"] == unit_type]
+        managers_seen = set()
+
+        for entry in unit_data:
+            manager = entry["manager"]
+            if manager not in managers_seen:
+                pdf.set_font('Arial', 'B', 10)
+                pdf.cell(0, 8, f"Manager: {manager}", ln=1)
+                pdf.table_header()
+                managers_seen.add(manager)
+
+            index = 1
+            pdf.table_row(index, entry["row"])
+            index += 1
+
+    # Save to memory buffer
+    pdf_buffer = io.BytesIO()
+    pdf.output(pdf_buffer)
+    pdf_buffer.seek(0)
+
+    return send_file(pdf_buffer, as_attachment=True, download_name="audit_programme.pdf", mimetype='application/pdf')
+
 if __name__ == '__main__':
     app.run(debug=True)

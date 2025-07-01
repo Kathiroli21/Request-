@@ -444,5 +444,50 @@ def generate_pdf():
         mimetype='application/pdf'
     )
 
+member_ids = [int(mid.strip()) for mid in str(member_ids_raw).split(",") if mid.strip().isdigit()]
+        member_names = [member_map.get(mid, f"ID:{mid}") for mid in member_ids]
+
+        audit_mgr = next((name for name in member_names if name in managers), "")
+        auditors = " / ".join([name for name in member_names if name != audit_mgr])
+
+        unit_type = classify_unit(description)
+
+        data.append({
+            "unit": unit_type,
+            "row": [allocation_id, allocation_id, description, auditors, audit_mgr, from_date, to_date, ""]
+        })
+
+    if not data:
+        return jsonify({"error": "No data found for selected financial year"}), 404
+
+    pdf = PDF(header_date=header_date, ref_year=financial_year)
+    pdf.add_page()
+
+    for unit_type in ["HO Units", "SOF Units", "Plant Units"]:
+        unit_data = [d for d in data if d["unit"] == unit_type]
+        if not unit_data:
+            continue
+
+        pdf.set_font('Arial', 'B', 11)
+        pdf.cell(0, 10, unit_type, ln=1)
+        pdf.table_header()
+
+        for idx, entry in enumerate(unit_data, start=1):
+            pdf.table_row(idx, entry["row"])
+
+        pdf.ln(5)
+
+    buffer = io.BytesIO()
+    pdf_output = pdf.output(dest='S').encode('latin1')
+    buffer.write(pdf_output)
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=f"audit_programme_{financial_year}.pdf",
+        mimetype='application/pdf'
+    )
+
 if __name__ == '__main__':
     app.run(debug=True)

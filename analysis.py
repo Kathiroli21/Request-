@@ -44,15 +44,32 @@ class PunchDataAnalyzer:
         # Rename columns for consistency (adjust these based on your actual column names)
         punch_in_clean.columns = ['persno', 'in_date', 'punchinsec', 'tm_ev_type_in', 'punchin_time', 'emp_date_key']
         
-        # Convert date and time columns
-        punch_in_clean['in_date'] = pd.to_datetime(punch_in_clean['in_date'])
-        punch_in_clean['punchin_time'] = pd.to_datetime(punch_in_clean['punchin_time'], format='%H:%M:%S', errors='coerce').dt.time
+        # Convert date columns with error handling
+        punch_in_clean['in_date'] = pd.to_datetime(punch_in_clean['in_date'], errors='coerce')
         
-        # Create datetime combination for punch in
-        punch_in_clean['punch_in_datetime'] = pd.to_datetime(
-            punch_in_clean['in_date'].dt.strftime('%Y-%m-%d') + ' ' + 
-            punch_in_clean['punchin_time'].astype(str)
-        )
+        # Handle time columns more carefully
+        # First check if time is already datetime or just time
+        try:
+            # Try to convert as time first
+            punch_in_clean['punchin_time_clean'] = pd.to_datetime(punch_in_clean['punchin_time'], format='%H:%M:%S', errors='coerce').dt.time
+        except:
+            # If that fails, try as datetime and extract time
+            punch_in_clean['punchin_time_clean'] = pd.to_datetime(punch_in_clean['punchin_time'], errors='coerce').dt.time
+        
+        # Create datetime combination for punch in - handle NaT values
+        punch_in_clean['punch_in_datetime'] = None
+        
+        for idx, row in punch_in_clean.iterrows():
+            try:
+                if pd.notna(row['in_date']) and pd.notna(row['punchin_time_clean']):
+                    date_str = row['in_date'].strftime('%Y-%m-%d')
+                    time_str = str(row['punchin_time_clean'])
+                    punch_in_clean.loc[idx, 'punch_in_datetime'] = pd.to_datetime(f"{date_str} {time_str}")
+            except:
+                punch_in_clean.loc[idx, 'punch_in_datetime'] = pd.NaT
+        
+        # Convert the datetime column to proper datetime type
+        punch_in_clean['punch_in_datetime'] = pd.to_datetime(punch_in_clean['punch_in_datetime'], errors='coerce')
         
         # Clean punch out data
         punch_out_clean = self.punch_out_df.copy()
@@ -60,20 +77,38 @@ class PunchDataAnalyzer:
         # Rename columns (adjust these based on your actual column names)
         punch_out_clean.columns = ['emp_date_key', 'punch_out_sec', 'persno', 'tm_ev_type_out', 'out_date', 'punch_out_time']
         
-        # Convert date and time columns
-        punch_out_clean['out_date'] = pd.to_datetime(punch_out_clean['out_date'])
-        punch_out_clean['punch_out_time'] = pd.to_datetime(punch_out_clean['punch_out_time'], format='%H:%M:%S', errors='coerce').dt.time
+        # Convert date columns with error handling
+        punch_out_clean['out_date'] = pd.to_datetime(punch_out_clean['out_date'], errors='coerce')
         
-        # Create datetime combination for punch out
-        punch_out_clean['punch_out_datetime'] = pd.to_datetime(
-            punch_out_clean['out_date'].dt.strftime('%Y-%m-%d') + ' ' + 
-            punch_out_clean['punch_out_time'].astype(str)
-        )
+        # Handle time columns more carefully
+        try:
+            # Try to convert as time first
+            punch_out_clean['punch_out_time_clean'] = pd.to_datetime(punch_out_clean['punch_out_time'], format='%H:%M:%S', errors='coerce').dt.time
+        except:
+            # If that fails, try as datetime and extract time
+            punch_out_clean['punch_out_time_clean'] = pd.to_datetime(punch_out_clean['punch_out_time'], errors='coerce').dt.time
+        
+        # Create datetime combination for punch out - handle NaT values
+        punch_out_clean['punch_out_datetime'] = None
+        
+        for idx, row in punch_out_clean.iterrows():
+            try:
+                if pd.notna(row['out_date']) and pd.notna(row['punch_out_time_clean']):
+                    date_str = row['out_date'].strftime('%Y-%m-%d')
+                    time_str = str(row['punch_out_time_clean'])
+                    punch_out_clean.loc[idx, 'punch_out_datetime'] = pd.to_datetime(f"{date_str} {time_str}")
+            except:
+                punch_out_clean.loc[idx, 'punch_out_datetime'] = pd.NaT
+        
+        # Convert the datetime column to proper datetime type
+        punch_out_clean['punch_out_datetime'] = pd.to_datetime(punch_out_clean['punch_out_datetime'], errors='coerce')
         
         self.punch_in_df = punch_in_clean
         self.punch_out_df = punch_out_clean
         
         print("Data cleaning completed")
+        print(f"Punch In records with valid datetime: {punch_in_clean['punch_in_datetime'].notna().sum()}")
+        print(f"Punch Out records with valid datetime: {punch_out_clean['punch_out_datetime'].notna().sum()}")
     
     def handle_overnight_shifts(self):
         """Handle overnight shift scenarios where punch out is next day"""
@@ -83,13 +118,17 @@ class PunchDataAnalyzer:
         
         # For each punch out, check if there's a corresponding punch in from previous day
         for idx, row in punch_out_overnight.iterrows():
+            if pd.isna(row['punch_out_datetime']):
+                continue
+                
             persno = row['persno']
             punch_out_time = row['punch_out_datetime']
             
             # Look for punch in from the same day first
             same_day_punch_in = self.punch_in_df[
                 (self.punch_in_df['persno'] == persno) & 
-                (self.punch_in_df['in_date'].dt.date == punch_out_time.date())
+                (self.punch_in_df['in_date'].dt.date == punch_out_time.date()) &
+                (self.punch_in_df['punch_in_datetime'].notna())
             ]
             
             # If no same day punch in found, check previous day for late night punch ins
@@ -98,6 +137,7 @@ class PunchDataAnalyzer:
                 prev_day_punch_in = self.punch_in_df[
                     (self.punch_in_df['persno'] == persno) & 
                     (self.punch_in_df['in_date'].dt.date == prev_day) &
+                    (self.punch_in_df['punch_in_datetime'].notna()) &
                     (self.punch_in_df['punch_in_datetime'].dt.hour >= 20)  # Late night punch ins (after 8 PM)
                 ]
                 
@@ -121,25 +161,31 @@ class PunchDataAnalyzer:
             suffixes=('_in', '_out')
         )
         
-        # Filter for same day matches
-        merged_same_day['same_day'] = (
-            merged_same_day['in_date'].dt.date == merged_same_day['out_date'].dt.date
-        )
+        # Filter for same day matches - handle missing columns gracefully
+        try:
+            merged_same_day['same_day'] = (
+                merged_same_day['in_date'].dt.date == merged_same_day['out_date'].dt.date
+            )
+        except:
+            # If date comparison fails, create same_day column with False values
+            merged_same_day['same_day'] = False
         
         # Strategy 2: Handle overnight shifts (punch in late, punch out next day early)
         overnight_matches = []
         
         for idx, row in merged_same_day.iterrows():
-            if pd.isna(row['same_day']) or not row['same_day']:
+            if pd.isna(row.get('same_day')) or not row.get('same_day', False):
                 persno = row['persno']
                 
-                if not pd.isna(row['punch_in_datetime']) and pd.isna(row['punch_out_datetime']):
+                if (pd.notna(row.get('punch_in_datetime')) and 
+                    pd.isna(row.get('punch_out_datetime'))):
                     # Look for punch out next day for late punch ins
                     if row['punch_in_datetime'].hour >= 20:  # Late punch in
                         next_day = row['in_date'].date() + timedelta(days=1)
                         next_day_punch_out = punch_out_processed[
                             (punch_out_processed['persno'] == persno) & 
                             (punch_out_processed['out_date'].dt.date == next_day) &
+                            (punch_out_processed['punch_out_datetime'].notna()) &
                             (punch_out_processed['punch_out_datetime'].dt.hour <= 10)  # Early punch out
                         ]
                         

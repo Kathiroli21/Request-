@@ -1,88 +1,95 @@
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import timedelta
 
-# Load the data - update file paths as needed
-punch_in_df = pd.read_excel('punch_in_data.xlsx')
-punch_out_df = pd.read_excel('punch_out_data.xlsx')
+# ─── CONFIG ────────────────────────────────────────────────────────────────
+PUNCH_IN_FILE  = "punch_in.xlsx"   # ← your punch-in Excel
+PUNCH_OUT_FILE = "punch_out.xlsx"  # ← your punch-out Excel
 
-# Ensure column names match exactly what you have in your files
-# Punch In columns: Persno, in_date, punchinsec, tm_ev_type, punchin_time, emp_date_key
-# Punch Out columns: emp_date_key, punch_out_sec, persno, tm_ev_type, Date, punch_out_time
+# Column names (adjust if your sheets use different names)
+IN_COLS  = ["Persno", "in_date", "punchinsec", "tm_ev_type", "punchin_time", "emp_date_key"]
+OUT_COLS = ["Emp_date_key", "punch_out_sec", "persno", "tm_ev_type", "Date", "punch_out_time"]
 
-# Convert to consistent naming (if needed)
-punch_in_df.columns = ['Persno', 'in_date', 'punchinsec', 'tm_ev_type_in', 'punchin_time', 'emp_date_key_in']
-punch_out_df.columns = ['emp_date_key_out', 'punch_out_sec', 'Persno', 'tm_ev_type_out', 'Date', 'punch_out_time']
+# Night-shift: any punch-out at or before this time is treated as the *next day* belonging to the previous day’s shift
+time_threshold = pd.to_timedelta("10:00:00")
+# ────────────────────────────────────────────────────────────────────────────
 
-# Convert date and time columns to datetime objects
-# Punch In datetime
-punch_in_df['in_datetime'] = pd.to_datetime(
-    punch_in_df['in_date'].astype(str) + ' ' + punch_in_df['punchin_time'].astype(str),
-    format='%d%m%Y %H:%M:%S',
-    errors='coerce'
-)
 
-# Punch Out datetime
-punch_out_df['out_datetime'] = pd.to_datetime(
-    punch_out_df['Date'].astype(str) + ' ' + punch_out_df['punch_out_time'].astype(str),
-    format='%d%m%Y %H:%M:%S',
-    errors='coerce'
-)
+def load_and_prepare():
+    # 1. Load data
+    df_in = pd.read_excel(PUNCH_IN_FILE, usecols=IN_COLS)
+    df_out = pd.read_excel(PUNCH_OUT_FILE, usecols=OUT_COLS)
 
-# Handle overnight shifts (punch out next day before 10am)
-def adjust_for_overnight_shifts(df):
-    # Create columns to help with matching overnight shifts
-    df['date_only'] = df['in_datetime'].dt.date
-    df['next_day_10am'] = df['in_datetime'] + timedelta(days=1)
-    df['next_day_10am'] = df['next_day_10am'].dt.normalize() + timedelta(hours=10)
-    return df
+    # 2. Parse in_datetimes
+    #    in_date: "ddmmyyyy", punchin_time: "H:M:S"
+    df_in["in_datetime"] = (
+        pd.to_datetime(df_in["in_date"], format="%d%m%Y") +
+        pd.to_timedelta(df_in["punchin_time"].astype(str))
+    )
+    
+    # 3. Parse out_datetimes
+    #    Date: "ddmmyyyy", punch_out_time: "H:M:S"
+    df_out["out_datetime_raw"] = (
+        pd.to_datetime(df_out["Date"], format="%d%m%Y") +
+        pd.to_timedelta(df_out["punch_out_time"].astype(str))
+    )
+    # 4. Adjust overnight: if out_time ≤ 10 AM, subtract 1 day to assign to the prior shift
+    mask_night = df_out["out_datetime_raw"].dt.time <= (time_threshold)
+    df_out.loc[mask_night, "out_datetime"] = df_out.loc[mask_night, "out_datetime_raw"] - timedelta(days=1)
+    df_out.loc[~mask_night, "out_datetime"] = df_out.loc[~mask_night, "out_datetime_raw"]
 
-punch_in_df = adjust_for_overnight_shifts(punch_in_df)
+    # 5. Derive a “shift_date” for grouping: date of the shift (use the date part of in_datetime or adjusted out_datetime)
+    df_in["shift_date"]  = df_in["in_datetime"].dt.normalize()
+    df_out["shift_date"] = df_out["out_datetime"].dt.normalize()
 
-# Create matching keys
-punch_in_df['match_key'] = punch_in_df['Persno'].astype(str) + '_' + punch_in_df['in_date'].astype(str)
-punch_out_df['match_key'] = punch_out_df['Persno'].astype(str) + '_' + punch_out_df['Date'].astype(str)
+    return df_in, df_out
 
-# Merge the data
-merged_df = pd.merge(
-    punch_in_df,
-    punch_out_df,
-    how='outer',
-    on='match_key',
-    suffixes=('_in', '_out')
-)
 
-# Analysis 1: Punch ins without punch outs
-punch_in_no_out = merged_df[merged_df['punch_out_time'].isna() & merged_df['punchin_time'].notna()]
-punch_in_no_out = punch_in_no_out[[
-    'Persno_in', 'in_date', 'punchinsec', 'tm_ev_type_in', 
-    'punchin_time', 'emp_date_key_in', 'in_datetime'
-]].rename(columns={'Persno_in': 'Persno'})
+def classify_records(df_in, df_out):
+    # 1. Merge in & out on Persno and shift_date (outer to capture all cases)
+    merged = (
+        pd.merge(
+            df_in[["Persno", "shift_date", "in_datetime"]],
+            df_out[["persno", "shift_date", "out_datetime"]],
+            left_on=["Persno", "shift_date"],
+            right_on=["persno", "shift_date"],
+            how="outer"
+        )
+        .rename(columns={"Persno": "Persno", "persno": "Persno"})
+    )
 
-# Analysis 2: Punch outs without punch ins
-punch_out_no_in = merged_df[merged_df['punchin_time'].isna() & merged_df['punch_out_time'].notna()]
-punch_out_no_in = punch_out_no_in[[
-    'Persno_out', 'emp_date_key_out', 'punch_out_sec', 'tm_ev_type_out',
-    'Date', 'punch_out_time', 'out_datetime'
-]].rename(columns={'Persno_out': 'Persno'})
+    # 2. Classify
+    def label(row):
+        if pd.notna(row["in_datetime"]) and pd.notna(row["out_datetime"]):
+            return "both"
+        if pd.notna(row["in_datetime"]) and pd.isna(row["out_datetime"]):
+            return "in_only"
+        if pd.isna(row["in_datetime"]) and pd.notna(row["out_datetime"]):
+            return "out_only"
+        return "unknown"
 
-# Analysis 3: Both punch in and punch out exist
-complete_punches = merged_df[merged_df['punchin_time'].notna() & merged_df['punch_out_time'].notna()]
+    merged["status"] = merged.apply(label, axis=1)
+    return merged
 
-# Handle overnight shifts in complete punches
-complete_punches['duration'] = complete_punches['out_datetime'] - complete_punches['in_datetime']
-complete_punches['is_overnight'] = complete_punches['duration'] > timedelta(hours=12)
 
-# Prepare final complete punches output
-complete_punches = complete_punches[[
-    'Persno_in', 'in_date', 'punchin_time', 'punch_out_time',
-    'in_datetime', 'out_datetime', 'duration', 'is_overnight',
-    'tm_ev_type_in', 'tm_ev_type_out', 'emp_date_key_in', 'emp_date_key_out'
-]].rename(columns={'Persno_in': 'Persno'})
+def main():
+    df_in, df_out = load_and_prepare()
+    result = classify_records(df_in, df_out)
 
-# Export results to Excel
-with pd.ExcelWriter('punch_analysis_results.xlsx') as writer:
-    punch_in_no_out.to_excel(writer, sheet_name='PunchIn_NoOut', index=False)
-    punch_out_no_in.to_excel(writer, sheet_name='PunchOut_NoIn', index=False)
-    complete_punches.to_excel(writer, sheet_name='Complete_Punches', index=False)
+    # 3. Split into separate DataFrames if you like:
+    in_only  = result[result["status"] == "in_only"]
+    out_only = result[result["status"] == "out_only"]
+    both     = result[result["status"] == "both"]
 
-print("Analysis complete. Results saved to 'punch_analysis_results.xlsx'")
+    # 4. Export or inspect:
+    in_only.to_excel("in_without_out.xlsx", index=False)
+    out_only.to_excel("out_without_in.xlsx", index=False)
+    both.to_excel("with_both.xlsx", index=False)
+
+    print("Done! Reports:")
+    print(f" • In without out:  {len(in_only)} rows → in_without_out.xlsx")
+    print(f" • Out without in:  {len(out_only)} rows → out_without_in.xlsx")
+    print(f" • Both in+out:     {len(both)} rows → with_both.xlsx")
+
+
+if __name__ == "__main__":
+    main()

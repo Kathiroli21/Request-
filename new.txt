@@ -1,0 +1,59 @@
+MaterialCodeTrend =
+ADDCOLUMNS(
+    SUMMARIZE(YearlyYield, YearlyYield[MaterialCode]),
+
+    "FirstYearYield",
+        CALCULATE(
+            MAX(YearlyYield[AvgOEYield]),
+            FILTER(
+                YearlyYield,
+                YearlyYield[YearRank] = 1 &&
+                YearlyYield[MaterialCode] = EARLIER(YearlyYield[MaterialCode])
+            )
+        ),
+
+    "LastYearYield",
+        CALCULATE(
+            MAX(YearlyYield[AvgOEYield]),
+            FILTER(
+                YearlyYield,
+                YearlyYield[YearRank] = MAXX(
+                    FILTER(YearlyYield, YearlyYield[MaterialCode] = EARLIER(YearlyYield[MaterialCode])),
+                    YearlyYield[YearRank]
+                )
+            )
+        ),
+
+    "TotalRec",
+        CALCULATE(
+            SUM(YearlyYield[TotalRec]),
+            FILTER(
+                YearlyYield,
+                YearlyYield[MaterialCode] = EARLIER(YearlyYield[MaterialCode])
+            )
+        ),
+
+    "Trend",
+        VAR First = 
+            CALCULATE(
+                MAX(YearlyYield[AvgOEYield]),
+                FILTER(
+                    YearlyYield,
+                    YearlyYield[YearRank] = 1 &&
+                    YearlyYield[MaterialCode] = EARLIER(YearlyYield[MaterialCode])
+                )
+            )
+        VAR Last =
+            CALCULATE(
+                MAX(YearlyYield[AvgOEYield]),
+                FILTER(
+                    YearlyYield,
+                    YearlyYield[YearRank] = MAXX(
+                        FILTER(YearlyYield, YearlyYield[MaterialCode] = EARLIER(YearlyYield[MaterialCode])),
+                        YearlyYield[YearRank]
+                    )
+                )
+            )
+        RETURN
+            IF(Last > First, "Increasing", IF(Last < First, "Decreasing", "Constant"))
+)

@@ -1,0 +1,83 @@
+1 Material Summary
+
+2 VAR BaseTable
+
+3
+
+4
+
+678
+
+SUMMARIZE(
+
+'Table',
+
+Table [material code],
+
+"FirstYear", MIN('Table' [year]),
+
+"LastYear", MAX('Table' [year]),
+
+"TotalBarcode", SUM('Table' [total barcode count])
+
+2009
+
+>
+
+10
+
+RETURN
+
+13
+
+ADDCOLUMNS (
+
+112
+
+BaseTable,
+
+13
+
+"FirstYearBarcode",
+
+VAR mat Table' [material code]
+
+15
+
+VAR fy [First Year]
+
+16
+
+RETURN
+
+CALCULATE(
+
+SUM('Table' [total barcode count]),
+
+'Table' [material code) mat,
+
+'Table' [year] fy
+
+"Last YearBarcode",
+
+VAR mat Table' [material code]
+
+VAR ly [LastYear]
+
+RETURN
+
+26
+
+CALCULATE
+
+28
+
+32
+
+SUM('Table [total barcode count]),
+
+'Table' [material code] mat
+
+'Table' [year] - ly
+
+"Trend", [Material Trend

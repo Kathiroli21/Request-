@@ -1,19 +1,45 @@
 import pandas as pd
 from datetime import datetime, timedelta
 
-# ---- USER INPUT ----
-# Replace with your real data file path and list:
-# df = pd.read_csv("your_file.csv")
-fixed_shift_staff = ['123456', '234567']  # example; use actual employee numbers as string or int
+# --- Sample Data (replace with your file load for real data) ---
+sample_data = {
+    'Employee Number': ['101', '101', '101', '101', '101', '101',
+                        '102', '102', '102', '102',
+                        '103', '103', '103', '103'],
+    'First Name': ['Alice']*6 + ['Bob']*4 + ['Carol']*4,
+    'Last Name': ['STAFF']*6 + ['WORKMAN']*4 + ['STAFF']*4,
+    'Date Occurred': [
+        '10-09-2025', '10-09-2025', '11-09-2025', '11-09-2025',
+        '11-09-2025', '11-09-2025',
+        '10-09-2025', '10-09-2025', '11-09-2025', '11-09-2025',
+        '10-09-2025', '10-09-2025', '10-09-2025', '11-09-2025'
+    ],
+    'Time Occurred': [
+        '23:30:00', '23:55:00', '01:10:00', '07:25:00', '07:45:00', '15:15:00',
+        '07:35:00', '15:25:00', '23:45:00', '07:20:00',
+        '07:47:00', '12:03:00', '12:15:00', '17:30:00'
+    ],
+    'Location': [
+        'MAIN_ENTRY Door 1 Reader', 'LMC-Z3-T1 Door 2 Reader',
+        'MAIN_ENTRY Door 2 Reader', 'LMC-Z3-T1 Door 1 Reader',
+        'MAIN_ENTRY Door 1 Reader', 'MAIN_ENTRY Door 2 Reader',
+        'LMC-Z3-T1 Door 1 Reader', 'MAIN_ENTRY Door 2 Reader',
+        'BIAS-Z3-T1 Door 1 Reader', 'MAIN_ENTRY Door 2 Reader',
+        'MAIN_ENTRY Door 1 Reader', 'LMC-Z3-T1 Door 1 Reader',
+        'LMC-Z3-T1 Door 2 Reader', 'MAIN_ENTRY Door 2 Reader'
+    ]
+}
+df = pd.DataFrame(sample_data)
 
-# ---- UTILITY FUNCTIONS ----
+# ---- Shift rules ----
 STAFF_SHIFTS = [("07:30", "15:30"), ("08:00", "16:00"), ("23:30", "07:30")]
 WORKMEN_SHIFTS = [("07:30", "15:30"), ("15:30", "23:30"), ("23:30", "07:30")]
+fixed_shift_staff = ['999']
 
 def normalize_location(loc):
-    if isinstance(loc, str) and ("LMC" in loc or "BIAS" in loc):
+    if "LMC" in loc or "BIAS" in loc:
         return "LMC"
-    elif isinstance(loc, str) and "MAIN" in loc:
+    elif "MAIN" in loc:
         return "MAIN"
     return "OTHER"
 
@@ -32,85 +58,63 @@ def get_role(last_name):
         return "WORKMEN"
     return "OTHER"
 
-def parse_time(date_str, time_str):
-    return datetime.strptime(f"{date_str} {time_str}", "%d-%m-%Y %H:%M:%S")
+def to_datetime(date_str, time_str):
+    return pd.to_datetime(date_str + " " + time_str, format="%d-%m-%Y %H:%M:%S")
 
-def assign_shift(first_punch, emp_no, role):
-    punch_time = first_punch.time()
-    shifts = STAFF_SHIFTS if role == "STAFF" else WORKMEN_SHIFTS
-    if role == "STAFF" and str(emp_no) in fixed_shift_staff:
-        shifts = [("08:00", "16:00")]
+def get_shift_windows(date, shifts):
+    date_dt = pd.to_datetime(date, dayfirst=True)
+    windows = []
     for start_str, end_str in shifts:
-        start_time = datetime.strptime(start_str, "%H:%M").time()
-        end_time = datetime.strptime(end_str, "%H:%M").time()
-        if end_time < start_time:  # Night shift
-            if punch_time >= start_time or punch_time < end_time:
-                return start_str, end_str
+        start_t = datetime.strptime(start_str, "%H:%M").time()
+        end_t = datetime.strptime(end_str, "%H:%M").time()
+        if end_t < start_t:
+            shift_start_dt = date_dt.replace(hour=start_t.hour, minute=start_t.minute, second=0)
+            shift_end_dt = (date_dt + timedelta(days=1)).replace(hour=end_t.hour, minute=end_t.minute, second=0)
         else:
-            if start_time <= punch_time < end_time:
-                return start_str, end_str
-    return None, None
+            shift_start_dt = date_dt.replace(hour=start_t.hour, minute=start_t.minute, second=0)
+            shift_end_dt = date_dt.replace(hour=end_t.hour, minute=end_t.minute, second=0)
+        windows.append((shift_start_dt, shift_end_dt, start_str, end_str))
+    return windows
 
-# ---- READ DATA ----
-# Replace with your filename; use read_excel if Excel file
-# df = pd.read_csv("your_file.csv", dtype=str)
-# For interactive test, insert a small DataFrame manually if no file access
-# Ensure all columns (including 'Employee Number') are proper dtype (string recommended for grouping)
-
-# ---- PREPROCESS ----
+# --- Enrich data ---
 df['Role'] = df['Last Name'].apply(get_role)
 df = df[df['Role'].isin(['STAFF', 'WORKMEN'])]
 df['Location Type'] = df['Location'].apply(normalize_location)
 df['Door'] = df['Location'].apply(get_door)
-df['Punch Datetime'] = df.apply(lambda r: parse_time(r['Date Occurred'], r['Time Occurred']), axis=1)
+df['Punch Datetime'] = df.apply(lambda r: to_datetime(r['Date Occurred'], r['Time Occurred']), axis=1)
 
-# ---- SHIFT and IN/OUT LOGIC ----
-output_rows = []
+summary_rows = []
 
-# Group by Employee and Date for initial shift assignment
-grouped = df.groupby(['Employee Number', 'Date Occurred'])
+for emp_no in df['Employee Number'].unique():
+    emp_df = df[df['Employee Number'] == emp_no]
+    role = emp_df.iloc[0]['Role']
+    shifts = STAFF_SHIFTS if role == "STAFF" else WORKMEN_SHIFTS
+    dates = sorted(emp_df['Date Occurred'].unique(), key=lambda d: pd.to_datetime(d, dayfirst=True))
+    for date in dates:
+        windows = get_shift_windows(date, shifts)
+        punches = emp_df[((emp_df['Date Occurred'] == date) | (emp_df['Date Occurred'] == (pd.to_datetime(date, dayfirst=True)+timedelta(days=1)).strftime("%d-%m-%Y")))]
+        for shift_start_dt, shift_end_dt, shift_start_label, shift_end_label in windows:
+            mask = (punches['Punch Datetime'] >= shift_start_dt) & (punches['Punch Datetime'] <= shift_end_dt)
+            shift_punches = punches[mask].sort_values('Punch Datetime')
+            if not shift_punches.empty:
+                main_in = shift_punches[(shift_punches['Location Type'] == 'MAIN') & (shift_punches['Door'] == 'IN')]
+                lmc_in = shift_punches[(shift_punches['Location Type'] == 'LMC') & (shift_punches['Door'] == 'IN')]
+                lmc_out = shift_punches[(shift_punches['Location Type'] == 'LMC') & (shift_punches['Door'] == 'OUT')]
+                main_out = shift_punches[(shift_punches['Location Type'] == 'MAIN') & (shift_punches['Door'] == 'OUT')]
+                summary_rows.append({
+                    'Employee Number': emp_no,
+                    'Last Name': role,
+                    'Date': date,
+                    'Shift Start': shift_start_label,
+                    'Shift End': shift_end_label,
+                    'Main In': main_in['Time Occurred'].iloc[0] if not main_in.empty else '',
+                    'LMC In': lmc_in['Time Occurred'].iloc[0] if not lmc_in.empty else '',
+                    'LMC Out': lmc_out['Time Occurred'].iloc[0] if not lmc_out.empty else '',
+                    'Main Out': main_out['Time Occurred'].iloc[0] if not main_out.empty else '',
+                })
 
-for (emp_no, date), group in grouped:
-    group_sorted = group.sort_values('Punch Datetime')
-    last_name = group_sorted.iloc['Last Name']
-    role = group_sorted.iloc['Role']
-    first_punch = group_sorted.iloc['Punch Datetime']
-    shift_start, shift_end = assign_shift(first_punch, emp_no, role)
+summary_df = pd.DataFrame(summary_rows)
+print(summary_df)
 
-    # --- Extended grouping for night shift OUTs ---
-    if shift_start == "23:30" and shift_end == "07:30":
-        date_dt = pd.to_datetime(date, dayfirst=True)
-        next_date = (date_dt + timedelta(days=1)).strftime("%d-%m-%Y")
-        # Combine today and next day
-        next_day_punches = df[(df['Employee Number'] == emp_no) & (df['Date Occurred'] == next_date)]
-        combined = pd.concat([group_sorted, next_day_punches])
-        # Considering punches from today 23:30 until next day 07:30
-        shift_start_dt = date_dt.replace(hour=23, minute=30, second=0)
-        shift_end_dt = (date_dt + timedelta(days=1)).replace(hour=7, minute=30, second=0)
-        punches = combined[(combined['Punch Datetime'] >= shift_start_dt) & (combined['Punch Datetime'] <= shift_end_dt)]
-    else:
-        punches = group_sorted
-
-    # Get first IN/OUT for Main/LMC for this shift's punches
-    main_in = punches[(punches['Location Type'] == 'MAIN') & (punches['Door'] == 'IN')]
-    lmc_in = punches[(punches['Location Type'] == 'LMC') & (punches['Door'] == 'IN')]
-    lmc_out = punches[(punches['Location Type'] == 'LMC') & (punches['Door'] == 'OUT')]
-    main_out = punches[(punches['Location Type'] == 'MAIN') & (punches['Door'] == 'OUT')]
-
-    row = {
-        'Employee Number': emp_no,
-        'Last Name': last_name,
-        'Shift Start': shift_start if shift_start else "",
-        'Shift End': shift_end if shift_end else "",
-        'Main In': main_in.iloc['Time Occurred'] if not main_in.empty else "",
-        'LMC In': lmc_in.iloc['Time Occurred'] if not lmc_in.empty else "",
-        'LMC Out': lmc_out.iloc['Time Occurred'] if not lmc_out.empty else "",
-        'Main Out': main_out.iloc['Time Occurred'] if not main_out.empty else "",
-    }
-    output_rows.append(row)
-
-summary_df = pd.DataFrame(output_rows)
-
-# ---- OUTPUT ----
-print(summary_df.head())
-# summary_df.to_csv("punch_summary.csv", index=False)  # Save as CSV if needed
+# To save to CSV:
+# summary_df.to_csv("output_punch_summary.csv", index=False)

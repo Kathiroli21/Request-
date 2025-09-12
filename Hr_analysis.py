@@ -1,122 +1,131 @@
 import pandas as pd
-from datetime import datetime, timedelta
+import numpy as np
+from datetime import datetime, time, timedelta
 
-# --- INPUT DATA (replace with your own DataFrame load if needed) ---
+# =========================
+# 1. Extended Sample Punch Data
+# =========================
 data = [
-    {'Employee Number': 618163, 'Last Name': 'STAFF', 'Date Occurred': '05-03-2025', 'Time Occurred': '23:29:31', 'Location': 'LMC-Z3-T1 Door 1 Reader'},
-    {'Employee Number': 618163, 'Last Name': 'STAFF', 'Date Occurred': '06-03-2025', 'Time Occurred': '07:36:45', 'Location': 'LMC-Z3-T2 Door 2 Reader'},
-    {'Employee Number': 618163, 'Last Name': 'STAFF', 'Date Occurred': '07-03-2025', 'Time Occurred': '23:29:46', 'Location': 'MAIN_ENTRY_FHT_3 Door 1 Reader'},
-    {'Employee Number': 618163, 'Last Name': 'STAFF', 'Date Occurred': '07-03-2025', 'Time Occurred': '23:38:14', 'Location': 'LMC-Z3-T1 Door 1 Reader'},
-    {'Employee Number': 618163, 'Last Name': 'STAFF', 'Date Occurred': '08-03-2025', 'Time Occurred': '07:47:26', 'Location': 'MAIN_ENTRY_FHT_5 Door 2 Reader'},
-    {'Employee Number': 618163, 'Last Name': 'STAFF', 'Date Occurred': '08-03-2025', 'Time Occurred': '23:31:38', 'Location': 'MAIN_ENTRY_FHT_3 Door 1 Reader'},
-    {'Employee Number': 618163, 'Last Name': 'STAFF', 'Date Occurred': '08-03-2025', 'Time Occurred': '23:40:09', 'Location': 'LMC-Z3-T2 Door 1 Reader'},
-    {'Employee Number': 618163, 'Last Name': 'STAFF', 'Date Occurred': '09-03-2025', 'Time Occurred': '07:38:50', 'Location': 'LMC-Z3-T2 Door 2 Reader'},
-    {'Employee Number': 618163, 'Last Name': 'STAFF', 'Date Occurred': '09-03-2025', 'Time Occurred': '07:46:58', 'Location': 'MAIN_ENTRY_FHT_5 Door 2 Reader'},
-    {'Employee Number': 618163, 'Last Name': 'STAFF', 'Date Occurred': '09-03-2025', 'Time Occurred': '08:46:58', 'Location': 'MAIN_ENTRY_FHT_5 Door 1 Reader'},
-    {'Employee Number': 618163, 'Last Name': 'STAFF', 'Date Occurred': '09-03-2025', 'Time Occurred': '03:46:58', 'Location': 'MAIN_ENTRY_FHT_5 Door 2 Reader'},
-    {'Employee Number': 618163, 'Last Name': 'STAFF', 'Date Occurred': '10-03-2025', 'Time Occurred': '07:46:58', 'Location': 'MAIN_ENTRY_FHT_5 Door 1 Reader'},
-    {'Employee Number': 618163, 'Last Name': 'STAFF', 'Date Occurred': '10-03-2025', 'Time Occurred': '15:46:58', 'Location': 'MAIN_ENTRY_FHT_5 Door 2 Reader'},
-    {'Employee Number': 618163, 'Last Name': 'STAFF', 'Date Occurred': '11-03-2025', 'Time Occurred': '15:46:58', 'Location': 'MAIN_ENTRY_FHT_5 Door 1 Reader'},
-    {'Employee Number': 618163, 'Last Name': 'STAFF', 'Date Occurred': '11-03-2025', 'Time Occurred': '23:25:10', 'Location': 'MAIN_ENTRY_FHT_5 Door 2 Reader'}
-]
-df = pd.DataFrame(data)
+    # Day Shift - Main In/Out
+    (1001, "A", "2025-09-10 07:35:00", "MAIN ENTRY FHT 1 Door 1", 1),
+    (1001, "A", "2025-09-10 15:36:00", "MAIN ENTRY FHT 1 Door 2", 2),
 
-# --- SHIFT DEFINITIONS ---
-shift_windows = [
-    ('23:30', '07:30'),    # Night shift
-    ('07:30', '15:30'),    # Day shift
-    ('15:30', '23:30')     # Evening shift
+    # Day Shift - LMC In/Out only
+    (1002, "B", "2025-09-10 07:40:00", "LMC-Z3 T1 Door 1 Reader", 1),
+    (1002, "B", "2025-09-10 15:45:00", "LMC-Z3 T1 Door 2 Reader", 2),
+
+    # Night Shift - In on 10th, Out on 11th
+    (1003, "C", "2025-09-10 23:40:00", "MAIN ENTRY FHT 1 Door 1", 1),
+    (1003, "C", "2025-09-11 07:20:00", "MAIN ENTRY FHT 1 Door 2", 2),
+
+    # Missing Out (only In punch)
+    (1004, "D", "2025-09-10 07:50:00", "MAIN ENTRY FHT 1 Door 1", 1),
+
+    # Missing In (only Out punch)
+    (1005, "E", "2025-09-10 15:25:00", "MAIN ENTRY FHT 1 Door 2", 2),
+
+    # LMC In but no Main In
+    (1007, "F", "2025-09-10 08:05:00", "LMC-Z3 T1 Door 1 Reader", 1),
+    (1007, "F", "2025-09-10 16:05:00", "MAIN ENTRY FHT 1 Door 2", 2),
+
+    # Fixed shift employee (08:00–16:00)
+    (2001, "G", "2025-09-10 08:00:00", "MAIN ENTRY FHT 1 Door 1", 1),
+    (2001, "G", "2025-09-10 16:00:00", "MAIN ENTRY FHT 1 Door 2", 2),
 ]
 
-# --- DATA ENRICHMENT ---
+df = pd.DataFrame(data, columns=["employee_id","name","datetime","location","door"])
+df["datetime"] = pd.to_datetime(df["datetime"])
+df["date"] = df["datetime"].dt.date
+
+# =========================
+# 2. Normalize location/door
+# =========================
 def normalize_location(loc):
-    if 'LMC' in loc or 'BIAS' in loc:
-        return 'LMC'
-    elif 'MAIN' in loc:
-        return 'MAIN'
-    return 'OTHER'
+    s = str(loc).upper()
+    if "MAIN" in s:
+        return "Main"
+    if "LMC" in s:
+        return "LMC"
+    return "Other"
 
-def get_door(loc):
-    if 'Door 1' in loc:
-        return 'IN'
-    elif 'Door 2' in loc:
-        return 'OUT'
-    return 'UNKNOWN'
+df["location_norm"] = df["location"].apply(normalize_location)
+df["door_type"] = df["door"].map({1:"Entry",2:"Exit"})
 
-def to_datetime(date, time):
-    return pd.to_datetime(f"{date} {time}", format="%d-%m-%Y %H:%M:%S")
+# =========================
+# 3. Shift assignment
+# =========================
+def assign_shift_by_time(dt, emp_id=None):
+    if pd.isna(dt): 
+        return (None, None)
+    # fixed shift for employee 2001
+    if emp_id == 2001:
+        start = datetime.combine(dt.date(), time(8,0))
+        end   = datetime.combine(dt.date(), time(16,0))
+        return (start, end)
 
-df['Location Type'] = df['Location'].apply(normalize_location)
-df['Door'] = df['Location'].apply(get_door)
-df['Punch Datetime'] = df.apply(lambda r: to_datetime(r['Date Occurred'], r['Time Occurred']), axis=1)
-# Add a 'used' column to track which punches have been assigned to a shift
-df['used'] = False
-df = df.sort_values('Punch Datetime').reset_index(drop=True)
+    t = dt.time()
+    if time(5,0) <= t < time(12,0):  # shift 1
+        return (datetime.combine(dt.date(), time(7,30)), datetime.combine(dt.date(), time(15,30)))
+    elif time(12,0) <= t < time(20,0):  # shift 2
+        return (datetime.combine(dt.date(), time(15,30)), datetime.combine(dt.date(), time(23,30)))
+    else:  # shift 3 (night)
+        return (datetime.combine(dt.date(), time(23,30)), datetime.combine(dt.date()+timedelta(days=1), time(7,30)))
 
-all_dates = pd.to_datetime(df['Date Occurred'], dayfirst=True).sort_values().unique()
+# =========================
+# 4. Build summary
+# =========================
+summary_rows = []
+for emp, g in df.groupby("employee_id"):
+    g = g.sort_values("datetime")
+    for d in g["date"].unique():
+        punches_day = g[g["date"] == d]
 
-# Define a grace period to catch punches slightly outside the shift window
-grace_period = timedelta(hours=2)
+        # ins
+        entries = punches_day[punches_day["door_type"]=="Entry"]
+        main_in = entries[entries["location_norm"]=="Main"]["datetime"].min()
+        lmc_in  = entries[entries["location_norm"]=="LMC"]["datetime"].min()
+        earliest_in = min([x for x in [main_in,lmc_in] if not pd.isna(x)], default=pd.NaT)
 
-records = []
-# Iterate through each day that has a punch
-for shift_date in all_dates:
-    # Check each type of shift for that day
-    for start_str, end_str in shift_windows:
-        shift_start_t = datetime.strptime(start_str, "%H:%M").time()
-        shift_end_t = datetime.strptime(end_str, "%H:%M").time()
-        
-        # Define the core shift start and end datetimes
-        shift_start_dt = pd.Timestamp(shift_date).replace(hour=shift_start_t.hour, minute=shift_start_t.minute, second=0)
-        
-        # Handle night shift crossing over midnight
-        if shift_end_t < shift_start_t:
-            shift_end_dt = (pd.Timestamp(shift_date) + timedelta(days=1)).replace(hour=shift_end_t.hour, minute=shift_end_t.minute, second=0)
-        else:
-            shift_end_dt = pd.Timestamp(shift_date).replace(hour=shift_end_t.hour, minute=shift_end_t.minute, second=0)
+        # shift assignment
+        shift_start, shift_end = assign_shift_by_time(earliest_in, emp)
 
-        # Define a wider search window using the grace period to find all related punches
-        search_start_dt = shift_start_dt - grace_period
-        search_end_dt = shift_end_dt + grace_period
+        # outs
+        exits = g[g["door_type"]=="Exit"]
+        main_out, lmc_out = pd.NaT, pd.NaT
+        if shift_start and shift_end:
+            if shift_end.time() == time(7,30):  # night shift
+                window_end = datetime.combine(shift_start.date()+timedelta(days=1), time(8,0))
+            else:
+                window_end = shift_end + timedelta(hours=1)
+            window_start = shift_start - timedelta(hours=2)
+            exits = exits[(exits["datetime"] >= window_start) & (exits["datetime"] <= window_end)]
+            if not exits.empty:
+                mo = exits[exits["location_norm"]=="Main"]["datetime"]
+                lo = exits[exits["location_norm"]=="LMC"]["datetime"]
+                if not mo.empty: main_out = mo.min()
+                if not lo.empty: lmc_out = lo.min()
 
-        # Filter for punches within the search window that haven't been used yet
-        window = df[(df['Punch Datetime'] >= search_start_dt) & (df['Punch Datetime'] < search_end_dt) & (~df['used'])]
-        
-        if window.empty:
-            continue
-        
-        # --- LOGIC CORRECTION ---
-        # Find all IN and OUT punches within the entire shift window
-        in_punches = window[window['Door'] == 'IN']
-        out_punches = window[window['Door'] == 'OUT']
+        # work start/end
+        work_start = main_in if not pd.isna(main_in) else lmc_in
+        work_end   = main_out if not pd.isna(main_out) else lmc_out
+        work_hours = (work_end - work_start).total_seconds()/3600 if (pd.notna(work_start) and pd.notna(work_end)) else 0
 
-        # A valid shift must have at least one IN and one OUT punch
-        if in_punches.empty or out_punches.empty:
-            continue
-            
-        main_in = in_punches[in_punches['Location Type'] == 'MAIN']['Time Occurred']
-        lmc_in  = in_punches[in_punches['Location Type'] == 'LMC']['Time Occurred']
-        main_out= out_punches[out_punches['Location Type'] == 'MAIN']['Time Occurred']
-        lmc_out = out_punches[out_punches['Location Type'] == 'LMC']['Time Occurred']
-
-        # Mark the punches in this valid shift as 'used' to prevent them from being double-counted
-        df.loc[in_punches.index, 'used'] = True
-        df.loc[out_punches.index, 'used'] = True
-        
-        records.append({
-            'Employee Number': window.iloc[0]['Employee Number'],
-            'Last Name': window.iloc[0]['Last Name'],
-            'DATE': shift_date.strftime('%d-%m-%Y'),
-            'SHIFT START': start_str,
-            'SHIFT END': end_str,
-            # Use min() for the first IN punch
-            'MAIN IN': main_in.min() if not main_in.empty else '',
-            'LMC IN': lmc_in.min() if not lmc_in.empty else '',
-            # Use max() for the last OUT punch
-            'MAIN OUT': main_out.max() if not main_out.empty else '',
-            'LMC OUT': lmc_out.max() if not lmc_out.empty else ''
+        summary_rows.append({
+            "Employee Number": emp,
+            "Date": d,
+            "Shift Start": shift_start,
+            "Shift End": shift_end,
+            "Main In": main_in,
+            "LMC In": lmc_in,
+            "Main Out": main_out,
+            "LMC Out": lmc_out,
+            "Work Hours": round(work_hours,2)
         })
 
-output_df = pd.DataFrame(records)
-print(output_df)
+summary_df = pd.DataFrame(summary_rows)
 
+# remove rows with no In/Out at all (e.g., night shift duplicate)
+summary_df = summary_df[~(summary_df[["Main In","LMC In","Main Out","LMC Out"]].isna().all(axis=1))]
+
+print(summary_df)
+# summary_df.to_excel("clean_summary.xlsx", index=False)

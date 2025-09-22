@@ -1,94 +1,45 @@
 import pandas as pd
-from datetime import datetime, timedelta
 
-# -------------------
-# Example Inputs
-# -------------------
-# Punch data
-punch_df = pd.DataFrame({
-    "employee": [101,101,101,101,102,102,103,103],
-    "date": ["2025-09-20","2025-09-20","2025-09-21","2025-09-21",
-             "2025-09-21","2025-09-21","2025-09-20","2025-09-21"],
-    "type": ["P10","P20","P10","P20","P10","P20","P10","P20"],
-    "time": ["23:40","23:59","07:55","16:30","06:00","18:30","23:40","07:50"]
-})
+file_path = "your_file.xlsx"
+df = pd.read_excel(file_path)
 
-# Shifts per employee
-shift_df = pd.DataFrame({
-    "employee": [101,102,103],
-    "date": ["2025-09-21","2025-09-21","2025-09-21"],
-    "shifts": ["3","1","3"]
-})
+df["Attendance or Absence Type"] = df["Attendance or Absence Type"].str.strip().str.lower()
+df["Start"] = pd.to_datetime(df["Start"], dayfirst=True, errors="coerce")
+df["End"] = pd.to_datetime(df["End"], dayfirst=True, errors="coerce")
 
-# -------------------
-# Define Shift Timings
-# -------------------
-shift_times = {
-    "1": ("08:05","16:05"),
-    "2": ("16:05","00:05"),
-    "3": ("00:05","08:05"),
-}
+if "Tot. cal.days" not in df.columns:
+    df["Tot. cal.days"] = (df["End"] - df["Start"]).dt.days + 1
 
-# -------------------
-# Convert punch datetime
-# -------------------
-punch_df["datetime"] = pd.to_datetime(punch_df["date"] + " " + punch_df["time"])
-punch_df = punch_df.sort_values(["employee","datetime"])
+df = df.sort_values(["Pers.No.", "Start"])
 
-# -------------------
-# Function: Get shift window
-# -------------------
-def get_shift_window(base_date, shift_id):
-    start_str, end_str = shift_times[shift_id]
-    start_dt = datetime.strptime(base_date+" "+start_str,"%Y-%m-%d %H:%M")
-    end_dt   = datetime.strptime(base_date+" "+end_str,"%Y-%m-%d %H:%M")
-    
-    # overnight shift (end <= start)
-    if end_dt <= start_dt:
-        end_dt += timedelta(days=1)
-    return start_dt, end_dt
+combined_issues = []
+for emp, group in df.groupby("Pers.No."):
+    group = group.sort_values("Start").reset_index(drop=True)
+    for i in range(len(group) - 1):
+        leave1 = group.loc[i, "Attendance or Absence Type"]
+        leave2 = group.loc[i+1, "Attendance or Absence Type"]
+        end1 = group.loc[i, "End"]
+        start2 = group.loc[i+1, "Start"]
+        if (start2 - end1).days <= 1:
+            if (("privilege leave" in leave1 or "casual leave" in leave1) and ("medical" in leave2 or "sick" in leave2)) or (("privilege leave" in leave2 or "casual leave" in leave2) and ("medical" in leave1 or "sick" in leave1)):
+                combined_issues.append((emp, group.loc[i, "Start"], group.loc[i+1, "End"]))
 
-# -------------------
-# Process Shifts
-# -------------------
-results = []
+pl_less_than_3 = df[(df["Attendance or Absence Type"].str.contains("privilege leave", case=False)) & (df["Tot. cal.days"] < 3)]
 
-for _, row in shift_df.iterrows():
-    emp, date, shifts = row["employee"], row["date"], row["shifts"].split(",")
-    
-    # if multiple shifts (e.g. "1,2") → merge
-    start_dt,end_dt = None,None
-    for sh in shifts:
-        s_dt,e_dt = get_shift_window(date,sh)
-        if start_dt is None:
-            start_dt,end_dt = s_dt,e_dt
-        else:
-            end_dt = max(end_dt,e_dt)
-    
-    # For overnight Shift 3 → allow punches from previous day late night
-    day_start = pd.to_datetime(date)
-    search_start = day_start - timedelta(days=1)  # include yesterday’s late punches
-    search_end = day_start + timedelta(days=1)    # include next day morning
-    
-    punches = punch_df[(punch_df["employee"]==emp) &
-                       (punch_df["datetime"]>=search_start) &
-                       (punch_df["datetime"]<=search_end)]
-    
-    # Pick earliest IN and latest OUT among available punches in that range
-    first_in = punches[punches["type"]=="P10"]["datetime"].min()
-    last_out = punches[punches["type"]=="P20"]["datetime"].max()
-    
-    # If employee had no punch, leave NaT
-    results.append({
-        "employee": emp,
-        "date": date,
-        "shifts": ",".join(shifts),
-        "shift_start": start_dt,
-        "shift_end": end_dt,
-        "first_in": first_in,
-        "last_out": last_out
-    })
+df["Year"] = df["Start"].dt.year
+pl_counts = df[df["Attendance or Absence Type"].str.contains("privilege leave", case=False)].groupby(["Pers.No.", "Year"]).size().reset_index(name="PL_Occasions")
+pl_more_than_3 = pl_counts[pl_counts["PL_Occasions"] > 3]
 
-final_df = pd.DataFrame(results)
+print("Combined PL/CL with Sick Leave:")
+print(combined_issues)
 
-print(final_df)
+print("\nPrivilege Leave less than 3 days:")
+print(pl_less_than_3[["Pers.No.", "Start", "End", "Tot. cal.days"]])
+
+print("\nEmployees with more than 3 PL occasions in a year:")
+print(pl_more_than_3)
+
+with pd.ExcelWriter("leave_analysis_output.xlsx") as writer:
+    pd.DataFrame(combined_issues, columns=["Pers.No.", "Start", "End"]).to_excel(writer, sheet_name="Combined_Issues", index=False)
+    pl_less_than_3.to_excel(writer, sheet_name="PL_Less_Than_3", index=False)
+    pl_more_than_3.to_excel(writer, sheet_name="PL_More_Than_3", index=False)
